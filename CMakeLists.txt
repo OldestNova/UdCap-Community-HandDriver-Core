@@ -32,13 +32,6 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-        NAME nng
-        GIT_REPOSITORY https://github.com/nanomsg/nng
-        GIT_TAG stable
-        OPTIONS "NNG_TESTS=OFF" "NNG_ENABLE_COVERAGE=OFF" "NNG_ENABLE_TLS=ON"
-)
-
-CPMAddPackage(
         NAME Boost
         VERSION 1.87.0 # Versions less than 1.85.0 may need patches for installation targets.
         URL https://github.com/boostorg/boost/releases/download/boost-1.88.0/boost-1.88.0-cmake.tar.xz
@@ -52,4 +45,4 @@ file(GLOB_RECURSE SRC_FILES
 )
 
 add_executable(SerialReborn ${SRC_FILES})
-target_link_libraries(SerialReborn PRIVATE usb-1.0 hidapi::hidapi usbp Boost::asio Boost::container nng)
+target_link_libraries(SerialReborn PRIVATE usb-1.0 hidapi::hidapi usbp Boost::asio Boost::container)

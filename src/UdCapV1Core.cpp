@@ -88,8 +88,8 @@ std::vector<std::vector<uint8_t>> UdCapHandV1PacketRealignmentHelper::processPac
     return packets;
 }
 
-UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor, std::string serialNumber):
-        portAccessor(std::move(portAccessor)), serialNumber(std::move(serialNumber)) {
+UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor):
+        portAccessor(std::move(portAccessor)) {
     this->portAccessor->openPort();
     this->portAccessor->setBaudRate(115200);
     if (!this->portAccessor->hasPacketRealignmentHelper()) {
@@ -103,6 +103,7 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor, std::string
 }
 
 UdCapV1Core::~UdCapV1Core() {
+    this->mcuStopData();
     this->unlistenPortCallback();
     this->portAccessor->stopContinuousRead();
 }
@@ -137,6 +138,10 @@ void UdCapV1Core::sendCommand(uint8_t humanAddress, CommandType commandType, con
     uint8_t crc = calculateCRC(packet, false);
     packet.push_back(crc);
     this->portAccessor->writeData(packet);
+}
+
+std::string UdCapV1Core::getUDCapSerial() const {
+    return udCapSerial;
 }
 
 void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
@@ -174,25 +179,8 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
 
             // 自动获取序列号
             if (initState == UD_INIT_STATE_NOT_INIT) {
-                initState = UD_INIT_STATE_PRE_INIT;
+                initState = UD_INIT_STATE_INIT;
 //                mcuGetSerialNum();
-                {
-                    UdCapV1MCUPacket packetSerial{};
-                    packetSerial.address = packetBuffer[2];
-                    packetSerial.commandType = CommandType::CMD_SERIAL;
-                    packetSerial.deviceSerialNum = std::string(deData.begin() + 1, deData.end());
-                    if (packetSerial.deviceSerialNum.find("AB") != std::string::npos) {
-                        packetSerial.isEnterprise = true;
-                        isEnterprise = true;
-                        initState = UD_INIT_STATE_INIT;
-                        callListenCallback(packetSerial);
-                    } else if (packetSerial.deviceSerialNum.find("AC") != std::string::npos) {
-                        packetSerial.isEnterprise = false;
-                        isEnterprise = false;
-                        initState = UD_INIT_STATE_INIT;
-                        callListenCallback(packetSerial);
-                    }
-                }
                 mcuStartData();
             }
         } else {
@@ -202,6 +190,31 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
                 callListenCallback(packet);
             }
             lastConnState = packet.linkState;
+        }
+        if (this->udCapSerial.empty()) {
+            UdCapV1MCUPacket packetSerial{};
+            packetSerial.address = packetBuffer[2];
+            packetSerial.commandType = CommandType::CMD_SERIAL;
+            this->udCapSerial = std::string(deData.begin() + 1, deData.end());
+            packetSerial.deviceSerialNum = this->udCapSerial;
+            if (*(deData.end() - 1) == 'L') {
+                this->target = UD_TARGET_LEFT_HAND;
+            } else if (*(deData.end() - 1) == 'R') {
+                this->target = UD_TARGET_RIGHT_HAND;
+            } else {
+                this->target = UD_TARGET_UNKNOWN;
+            }
+            if (packetSerial.deviceSerialNum.find("AB") != std::string::npos) {
+                packetSerial.isEnterprise = true;
+                isEnterprise = true;
+                initState = UD_INIT_STATE_INIT;
+                callListenCallback(packetSerial);
+            } else if (packetSerial.deviceSerialNum.find("AC") != std::string::npos) {
+                packetSerial.isEnterprise = false;
+                isEnterprise = false;
+                initState = UD_INIT_STATE_INIT;
+                callListenCallback(packetSerial);
+            }
         }
     } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_SET_CHANNEL_DONE) {
         UdCapV1MCUPacket packet {};
@@ -278,6 +291,10 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
         packet.angle = iData;
         callListenCallback(packet);
     }
+}
+
+UdTarget UdCapV1Core::getTarget() const {
+    return target;
 }
 
 void UdCapV1Core::mcuStopData() {

@@ -50,6 +50,12 @@ struct UdCapV1MCUPacket {
     std::vector<int16_t> angle;
 };
 
+enum UdTarget {
+    UD_TARGET_UNKNOWN = 0,
+    UD_TARGET_LEFT_HAND = 1,
+    UD_TARGET_RIGHT_HAND = 2,
+};
+
 enum UdInitState {
     UD_INIT_STATE_UNKNOWN = -1,
     UD_INIT_STATE_NOT_INIT = 0,
@@ -71,12 +77,14 @@ private:
 
 class UdCapV1Core {
 public:
-    UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor, std::string serialNumber);
+    UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor);
     ~UdCapV1Core();
 
     void sendCommand(uint8_t humanAddress, CommandType commandType, const std::vector<uint8_t> &data);
     std::function<void()> listen(const std::function<void(const UdCapV1MCUPacket &)>& callback);
     static std::string fromLinkStateToString(LinkState state);
+    UdTarget getTarget() const;
+    std::string getUDCapSerial() const;
     void mcuStopData();
     void mcuStartData();
     void mcuGetSerialNum();
@@ -85,7 +93,8 @@ private:
     void callListenCallback(const UdCapV1MCUPacket &packet);
     std::function<void()> unlistenPortCallback;
     std::shared_ptr<PortAccessor> portAccessor;
-    std::string serialNumber;
+    std::string udCapSerial;
+    UdTarget target = UD_TARGET_UNKNOWN;
     std::vector<std::function<void(const UdCapV1MCUPacket &)>> listenCallbacks;
     std::mutex callbackMutex;
     uint16_t lastBattery = 0;

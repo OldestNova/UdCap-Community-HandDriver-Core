@@ -28,12 +28,14 @@ int main() {
                 }
                 case UDCAP_PROBE_HAND_V1: {
                     std::cout << "  Probe successful. This is a UdCap Receiver with SN: " << prober.getUDCapSerial() << std::endl;
-                    UdCapV1Core core(portAccessor, prober.getUDCapSerial());
-                    auto unlisten = core.listen([](const UdCapV1MCUPacket &data) {
+                    UdCapV1Core core(portAccessor);
+                    auto unlisten = core.listen([&core](const UdCapV1MCUPacket &data) {
                         if (data.commandType == CMD_LINK_STATE) {
-                            std::cout << "Link State: " << UdCapV1Core::fromLinkStateToString(data.linkState);
+                            std::cout << "  Link State: " << UdCapV1Core::fromLinkStateToString(data.linkState);
                         } else if (data.commandType == CMD_SERIAL) {
-                            std::cout << "Serial Num: " << data.deviceSerialNum;
+                            std::cout << "  Serial Num: " << data.deviceSerialNum << std::endl;
+                            std::cout << "    Hand: " << (core.getTarget() == UD_TARGET_LEFT_HAND ? "Left" : (core.getTarget() == UD_TARGET_RIGHT_HAND ? "Right" : "Unknown")) << std::endl;
+                            std::cout << "    Type: " << (data.isEnterprise  ? "Enterprise" : "Client") << std::endl;
                         } else if (data.commandType == CMD_DATA) {
                             std::cout << "  Angle: ";
                             for (const auto &angle: data.angle) {
