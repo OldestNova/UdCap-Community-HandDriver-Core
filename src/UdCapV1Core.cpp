@@ -688,12 +688,41 @@ void UdCapV1Core::captureCalibrationData(UdCapV1HandCaliType type) {
     if (type == UDCAP_V1_HAND_CALI_TYPE_ALL) {
         throw std::runtime_error("Invalid calibration type");
     } else if (type == UDCAP_V1_HAND_CALI_TYPE_FIST) {
+        // TODO improve accuracy
         caliFist.captured = true;
-
+        caliFist.h4 = lastAngle.f4;
+        caliFist.h5 = lastAngle.f5;
+        caliFist.h6 = lastAngle.f6;
+        caliFist.h7 = lastAngle.f7;
+        caliFist.h9 = lastAngle.f9;
+        caliFist.h10 = lastAngle.f10;
+        caliFist.h12 = lastAngle.f12;
+        caliFist.h13 = lastAngle.f13;
+        caliFist.h15 = lastAngle.f15;
     } else if (type == UDCAP_V1_HAND_CALI_TYPE_ADDUCTION) {
+        // TODO improve accuracy
         caliAdduction.captured = true;
+        caliAdduction.n1 = lastAngle.f1;
+        caliAdduction.n2 = lastAngle.f2;
+        caliAdduction.n3 = lastAngle.f3;
+        caliAdduction.n4 = lastAngle.f4;
+        caliAdduction.n5 = lastAngle.f5;
+        caliAdduction.n6 = lastAngle.f6;
+        caliAdduction.n7 = lastAngle.f7;
+        caliAdduction.n8 = lastAngle.f8;
+        caliAdduction.n9 = lastAngle.f9;
+        caliAdduction.n10 = lastAngle.f10;
+        caliAdduction.n11 = lastAngle.f11;
+        caliAdduction.n12 = lastAngle.f12;
+        caliAdduction.n13 = lastAngle.f13;
+        caliAdduction.n14 = lastAngle.f14;
+        caliAdduction.n15 = lastAngle.f15;
     } else if (type == UDCAP_V1_HAND_CALI_TYPE_PROTRACT) {
+        // TODO improve accuracy
         caliProtract.captured = true;
+        caliProtract.h8 = lastAngle.f8;
+        caliProtract.h11 = lastAngle.f11;
+        caliProtract.h14 = lastAngle.f14;
     }
 }
 
