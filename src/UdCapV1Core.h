@@ -21,6 +21,7 @@ enum UdCapV1StateMachine {
 };
 
 enum CommandType {
+    CMD_ANGLE = -1,
     CMD_DATA = 1,
     CMD_BATTERY = 5,
     CMD_SERIAL = 6,
@@ -48,6 +49,7 @@ struct UdCapV1MCUPacket {
     std::string deviceSerialNum;
     bool isEnterprise;
     std::vector<int16_t> angle;
+    std::vector<double> result;
 };
 
 enum UdTarget {
@@ -75,6 +77,89 @@ private:
 };
 
 
+struct UdCapV1HandCaliFist {
+    bool captured;
+    double h4;
+    double h5;
+    double h6;
+    double h7;
+    double h9;
+    double h10;
+    double h12;
+    double h13;
+    double h15;
+};
+struct UdCapV1HandCaliAdduction {
+    bool captured;
+    double n1;
+    double n2;
+    double n3;
+    double n4;
+    double n5;
+    double n6;
+    double n7;
+    double n8;
+    double n9;
+    double n10;
+    double n11;
+    double n12;
+    double n13;
+    double n14;
+    double n15;
+};
+struct UdCapV1HandCaliProtract {
+    bool captured;
+    double h8;
+    double h11;
+    double h14;
+};
+struct UdCapV1HandData {
+    float f0;
+    float f1;
+    float f2;
+    float f3;
+    float f4;
+    float f5;
+    float f6;
+    float f7;
+    float f8;
+    float f9;
+    float f10;
+    float f11;
+    float f12;
+    float f13;
+    float f14;
+    float f15;
+    float f16;
+    float f17;
+    float f18;
+};
+
+struct UdCapV1InputData {
+    float joyX;
+    float joyY;
+
+    bool joyButton;
+    bool aButton;
+    bool bButton;
+    bool menuButton;
+};
+
+enum UdCapV1HandCaliStat {
+    UDCAP_V1_HAND_CALI_STAT_AUTO = -1,
+    UDCAP_V1_HAND_CALI_STAT_NONE = 0,
+//    UDCAP_V1_HAND_CALI_STAT_FIST = 1,
+//    UDCAP_V1_HAND_CALI_STAT_ADDUCTION = 2,
+//    UDCAP_V1_HAND_CALI_STAT_PROTRACT = 3,
+    UDCAP_V1_HAND_CALI_STAT_COMPLETED = 4
+};
+enum UdCapV1HandCaliType {
+    UDCAP_V1_HAND_CALI_TYPE_ALL = 0,
+    UDCAP_V1_HAND_CALI_TYPE_FIST = 1,
+    UDCAP_V1_HAND_CALI_TYPE_ADDUCTION = 2,
+    UDCAP_V1_HAND_CALI_TYPE_PROTRACT = 3,
+};
+
 class UdCapV1Core {
 public:
     UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor);
@@ -88,6 +173,12 @@ public:
     void mcuStopData();
     void mcuStartData();
     void mcuGetSerialNum();
+
+    void runCalibration();
+    void captureCalibrationData(UdCapV1HandCaliType type);
+    void clearCalibrationData(UdCapV1HandCaliType type);
+    void completeCalibrationData();
+    UdCapV1HandCaliStat getCalibrationStatus() const;
 private:
     void parsePacket(const std::vector<uint8_t> &);
     void callListenCallback(const UdCapV1MCUPacket &packet);
@@ -101,6 +192,19 @@ private:
     bool isEnterprise = false;
     UdInitState initState = UD_INIT_STATE_NOT_INIT;
     LinkState lastConnState = LINK_STATE_UNKNOWN;
+    UdCapV1HandCaliStat caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
+    UdCapV1HandCaliFist caliFist;
+    UdCapV1HandCaliAdduction caliAdduction;
+    UdCapV1HandCaliProtract caliProtract;
+    UdCapV1HandData lastAngle {};
+    float xCenterData = 1850.0;
+    float yCenterData = 1850.0;
+    float xMaxData = 3750.0;
+    float xMinData = 620.0;
+    float yMaxData = 3750.0;
+    float yMinData = 620.0;
+    float deadZone = 0.15;
+    bool thumbOn = true;
 };
 
 
