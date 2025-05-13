@@ -10,34 +10,8 @@ file(
 )
 include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 
-CPMAddPackage(
-        NAME libusb
-        GIT_REPOSITORY https://github.com/libusb/libusb-cmake
-        VERSION 1.0.28-0
-        OPTIONS "LIBUSB_BUILD_EXAMPLES=OFF" "LIBUSB_BUILD_TESTING=OFF" "LIBUSB_BUILD_SHARED_LIBS=ON"
-)
-
-CPMAddPackage(
-        NAME hidapi
-        GIT_REPOSITORY https://github.com/libusb/hidapi
-        GIT_TAG hidapi-0.14.0
-        OPTIONS "HIDAPI_BUILD_HIDTEST=OFF" "HIDAPI_WITH_TESTS=OFF"
-)
-
-CPMAddPackage(
-        NAME libusbp
-        GIT_REPOSITORY https://github.com/pololu/libusbp
-        GIT_TAG master
-        OPTIONS "ENABLE_EXAMPLES=OFF" "ENABLE_TESTS=OFF" "ENABLE_GCOV=OFF"
-)
-
-CPMAddPackage(
-        NAME Boost
-        VERSION 1.87.0 # Versions less than 1.85.0 may need patches for installation targets.
-        URL https://github.com/boostorg/boost/releases/download/boost-1.88.0/boost-1.88.0-cmake.tar.xz
-        OPTIONS "BOOST_ENABLE_CMAKE ON" "BOOST_SKIP_INSTALL_RULES ON" # Set `OFF` for installation
-        "BUILD_SHARED_LIBS OFF" "BOOST_INCLUDE_LIBRARIES container\\\;asio\\\;optional\\\;date_time" # Note the escapes!
-)
+add_subdirectory(serial-reborn)
+include_directories(serial-reborn/src)
 
 add_subdirectory(ar1_linear)
 include_directories(ar1_linear/src)
@@ -48,4 +22,4 @@ file(GLOB_RECURSE SRC_FILES
 )
 
 add_executable(UdCapCommunityDriver ${SRC_FILES})
-target_link_libraries(UdCapCommunityDriver PRIVATE usb-1.0 hidapi::hidapi usbp Boost::asio Boost::container AR1Linear)
+target_link_libraries(UdCapCommunityDriver PRIVATE SerialReborn AR1Linear)

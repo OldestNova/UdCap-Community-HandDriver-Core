@@ -5,8 +5,8 @@
 #ifndef SERIALREBORN_UDCAPPROBE_H
 #define SERIALREBORN_UDCAPPROBE_H
 
-#include "common.h"
-#include "PortAccessor.h"
+#include <SerialCommon.h>
+#include <PortAccessor.h>
 
 enum UdCapProbeType {
     UDCAP_PROBE_FAILURE = 0,

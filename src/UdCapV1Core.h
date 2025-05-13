@@ -6,7 +6,7 @@
 #define SERIALREBORN_UDCAPV1CORE_H
 
 #include <map>
-#include "PortAccessor.h"
+#include <PortAccessor.h>
 
 enum UdCapV1StateMachine {
     NOOP,

@@ -5,7 +5,7 @@
 #ifndef SERIALREBORN_USBENUMERATE_H
 #define SERIALREBORN_USBENUMERATE_H
 
-#include "common.h"
+#include "SerialCommon.h"
 #include <vector>
 #include <string>
 #include <libusbp.hpp>

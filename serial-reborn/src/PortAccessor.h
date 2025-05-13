@@ -5,7 +5,7 @@
 #ifndef SERIALREBORN_PORTACCESSOR_H
 #define SERIALREBORN_PORTACCESSOR_H
 
-#include "common.h"
+#include "SerialCommon.h"
 #include <boost/asio.hpp>
 #include "BoostHelper.hpp"
 #include <vector>
