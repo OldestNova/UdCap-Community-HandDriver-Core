@@ -10,7 +10,7 @@ ImportAR1Linear(AR1LinearAD)
 ImportAR1Linear(AR1LinearAE)
 ImportAR1Linear(AR1LinearAG)
 
-uint8_t calculateCRC(const std::vector<uint8_t>& data, bool ignoreLast) {
+uint8_t calculateCRC(const std::vector<uint8_t> &data, bool ignoreLast) {
     uint8_t crc = 0;
     size_t lastIndex = ignoreLast ? data.size() - 1 : data.size();
     for (size_t i = 2; i < data.size() - 1; i++) {
@@ -21,7 +21,7 @@ uint8_t calculateCRC(const std::vector<uint8_t>& data, bool ignoreLast) {
 
 std::vector<uint8_t> decodeXOR(std::vector<uint8_t> data) {
     std::vector<uint8_t> result;
-    for (auto& byte : data) {
+    for (auto &byte: data) {
         auto u = byte ^ 1;
         u ^= 128;
         result.push_back(u);
@@ -29,9 +29,9 @@ std::vector<uint8_t> decodeXOR(std::vector<uint8_t> data) {
     return result;
 }
 
-std::vector<std::vector<uint8_t>> UdCapHandV1PacketRealignmentHelper::processPacket(const std::vector<uint8_t> &data) {
-    std::vector<std::vector<uint8_t>> packets;
-    for (auto& byte : data) {
+std::vector<std::vector<uint8_t> > UdCapHandV1PacketRealignmentHelper::processPacket(const std::vector<uint8_t> &data) {
+    std::vector<std::vector<uint8_t> > packets;
+    for (auto &byte: data) {
         switch (this->stateMachine) {
             case NOOP: {
                 if (byte == 170) {
@@ -96,26 +96,22 @@ std::vector<std::vector<uint8_t>> UdCapHandV1PacketRealignmentHelper::processPac
 
 std::vector<double> udCapV1HandAutoCali(const double f[], const double n[], const double h[], float nn) {
     std::vector<double> array(12);
-    for (int i = 0; i < 12; i++)
-    {
-        if (h[i] <= n[i])
-        {
+    for (int i = 0; i < 12; i++) {
+        if (h[i] <= n[i]) {
             array[i] = 0.0;
-        }
-        else
-        {
-            array[i] = (f[i] - n[i]) / (h[i] - n[i]) * (double)nn;
+        } else {
+            array[i] = (f[i] - n[i]) / (h[i] - n[i]) * (double) nn;
         }
     }
     return array;
 }
 
-UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor):
-        portAccessor(std::move(portAccessor)) {
+UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): portAccessor(std::move(portAccessor)) {
     this->portAccessor->openPort();
     this->portAccessor->setBaudRate(115200);
     if (!this->portAccessor->hasPacketRealignmentHelper()) {
-        std::unique_ptr<UdCapHandV1PacketRealignmentHelper> packetRealignmentHelper = std::make_unique<UdCapHandV1PacketRealignmentHelper>();
+        std::unique_ptr<UdCapHandV1PacketRealignmentHelper> packetRealignmentHelper = std::make_unique<
+            UdCapHandV1PacketRealignmentHelper>();
         this->portAccessor->setPacketRealignmentHelper(std::move(packetRealignmentHelper));
     }
     this->unlistenPortCallback = this->portAccessor->addDataCallback([&](const std::vector<uint8_t> &data) {
@@ -130,21 +126,21 @@ UdCapV1Core::~UdCapV1Core() {
     this->portAccessor->stopContinuousRead();
 }
 
-std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1MCUPacket &)>& callback) {
+std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1MCUPacket &)> &callback) {
     std::lock_guard guard(callbackMutex);
     listenCallbacks.push_back(callback);
     return [this, callback]() {
         // Remove the callback from the list
         listenCallbacks.erase(std::remove_if(listenCallbacks.begin(), listenCallbacks.end(),
-                                           [&callback](const std::function<void(const UdCapV1MCUPacket&)>& item) {
-                                               return item.target_type() == callback.target_type();
-                                           }), listenCallbacks.end());
+                                             [&callback](const std::function<void(const UdCapV1MCUPacket &)> &item) {
+                                                 return item.target_type() == callback.target_type();
+                                             }), listenCallbacks.end());
     };
 }
 
 void UdCapV1Core::callListenCallback(const UdCapV1MCUPacket &packet) {
     std::lock_guard guard(callbackMutex);
-    for (const auto& callback : listenCallbacks) {
+    for (const auto &callback: listenCallbacks) {
         callback(packet);
     }
 }
@@ -154,8 +150,8 @@ void UdCapV1Core::sendCommand(uint8_t humanAddress, CommandType commandType, con
     packet.push_back(85);
     packet.push_back(170);
     packet.push_back(humanAddress); // humanAddress
-    packet.push_back((uint8_t)commandType); // commandType
-    packet.push_back((uint8_t)data.size()); // dataLength
+    packet.push_back((uint8_t) commandType); // commandType
+    packet.push_back((uint8_t) data.size()); // dataLength
     packet.insert(packet.end(), data.begin(), data.end());
     uint8_t crc = calculateCRC(packet, false);
     packet.push_back(crc);
@@ -166,16 +162,16 @@ std::string UdCapV1Core::getUDCapSerial() const {
     return udCapSerial;
 }
 
-void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
+void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
     uint8_t dataLength = packetBuffer[5];
     std::vector<uint8_t> data;
     for (size_t i = 6; i < 6 + dataLength; i++) {
         data.push_back(packetBuffer[i]);
     }
-    if (packetBuffer[3] == (uint8_t)CommandType::CMD_LINK_STATE) {
+    if (packetBuffer[3] == (uint8_t) CommandType::CMD_LINK_STATE) {
         auto deData = decodeXOR(data);
         short linkState = deData[0];
-        UdCapV1MCUPacket packet {};
+        UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_LINK_STATE;
         if (linkState == 0) {
@@ -190,7 +186,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
                 mcuStopData();
                 initState = UD_INIT_STATE_NOT_INIT;
             }
-
         } else if (linkState == 1) {
             packet.linkState = LinkState::LINK_STATE_CONNECTED;
 
@@ -202,7 +197,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
             // 自动获取序列号
             if (initState == UD_INIT_STATE_NOT_INIT) {
                 initState = UD_INIT_STATE_INIT;
-//                mcuGetSerialNum();
+                //                mcuGetSerialNum();
                 mcuStartData();
             }
         } else {
@@ -238,48 +233,47 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
                 callListenCallback(packetSerial);
             }
         }
-    } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_SET_CHANNEL_DONE) {
-        UdCapV1MCUPacket packet {};
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SET_CHANNEL_DONE) {
+        UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_SET_CHANNEL_DONE;
         callListenCallback(packet);
-    } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_GET_CHANNEL) {
-        UdCapV1MCUPacket packet {};
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_GET_CHANNEL) {
+        UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_GET_CHANNEL;
         auto deData = decodeXOR(data);
         packet.channel = deData[0];
         callListenCallback(packet);
-    } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_FW_VERSION) {
-        UdCapV1MCUPacket packet {};
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_FW_VERSION) {
+        UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_FW_VERSION;
         auto deData = decodeXOR(data);
         packet.fwVersion = std::string(deData.begin(), deData.end());
         callListenCallback(packet);
-    } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_BATTERY) {
-        UdCapV1MCUPacket packet {};
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_BATTERY) {
+        UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_BATTERY;
         auto deData = decodeXOR(data);
         auto udata = (int16_t) ((deData[0] << 8) | deData[1]);
         int batt = ((udata <= 1980) ? 1 : ((udata <= 2090) ? 2 : ((udata <= 2150) ? 3 : ((udata > 2300) ? 5 : 4))));
-        if (batt > lastBattery)
-        {
+        if (batt > lastBattery) {
             batt = ((udata <= 2010) ? 1 : ((udata <= 2120) ? 2 : ((udata <= 2180) ? 3 : ((udata > 2320) ? 5 : 4))));
         }
         lastBattery = batt;
         packet.battery = batt;
         callListenCallback(packet);
-    } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_SET_CHANNEL) {
-        UdCapV1MCUPacket packet {};
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SET_CHANNEL) {
+        UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_SET_CHANNEL;
         auto deData = decodeXOR(data);
         uint16_t result = deData[1];
         packet.channel = result;
         callListenCallback(packet);
-    } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_SERIAL) {
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SERIAL) {
         {
             UdCapV1MCUPacket packet{};
             packet.address = packetBuffer[2];
@@ -299,8 +293,8 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
             }
         }
         mcuStartData();
-    } else if (packetBuffer[3] == (uint8_t)CommandType::CMD_DATA) {
-        UdCapV1MCUPacket packet {};
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_DATA) {
+        UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_DATA;
         auto deData = decodeXOR(data);
@@ -316,156 +310,104 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
         memset(&lastAngle, 0, sizeof(lastAngle));
         bool hasController = false;
         if (iData.size() > 12) {
-            lastAngle.f0 = (((float)(iData[12])) - 1000.0) / 1000.0;
-            lastAngle.f1 = (((float)(iData[13])) - 1000.0) / 1000.0;
-            lastAngle.f2 = (((float)(iData[14])) - 1000.0) / 1000.0;
-            lastAngle.f3 = (((float)(iData[15])) - 1000.0) / 1000.0;
+            lastAngle.f0 = (((float) (iData[12])) - 1000.0) / 1000.0;
+            lastAngle.f1 = (((float) (iData[13])) - 1000.0) / 1000.0;
+            lastAngle.f2 = (((float) (iData[14])) - 1000.0) / 1000.0;
+            lastAngle.f3 = (((float) (iData[15])) - 1000.0) / 1000.0;
         }
-        lastAngle.f4 = (float)(iData[0]);
-        lastAngle.f5 = (float)(iData[1]);
-        lastAngle.f6 = (float)(iData[2]);
-        lastAngle.f7 = (float)(iData[3]);
-        lastAngle.f8 = (float)(iData[4]);
-        lastAngle.f9 = (float)(iData[5]);
-        lastAngle.f10 = (float)(iData[6]);
-        lastAngle.f11 = (float)(iData[7]);
-        lastAngle.f12 = (float)(iData[8]);
-        lastAngle.f13 = (float)(iData[9]);
-        lastAngle.f14 = (float)(iData[10]);
-        lastAngle.f15 = (float)(iData[11]);
+        lastAngle.f4 = (float) (iData[0]);
+        lastAngle.f5 = (float) (iData[1]);
+        lastAngle.f6 = (float) (iData[2]);
+        lastAngle.f7 = (float) (iData[3]);
+        lastAngle.f8 = (float) (iData[4]);
+        lastAngle.f9 = (float) (iData[5]);
+        lastAngle.f10 = (float) (iData[6]);
+        lastAngle.f11 = (float) (iData[7]);
+        lastAngle.f12 = (float) (iData[8]);
+        lastAngle.f13 = (float) (iData[9]);
+        lastAngle.f14 = (float) (iData[10]);
+        lastAngle.f15 = (float) (iData[11]);
         if (iData.size() > 16) {
-            lastAngle.f16 = (float)(iData[16]);
-            lastAngle.f17 = (float)(iData[17]);
-            lastAngle.f18 = (float)(iData[18]);
+            lastAngle.f16 = (float) (iData[16]);
+            lastAngle.f17 = (float) (iData[17]);
+            lastAngle.f18 = (float) (iData[18]);
             hasController = true;
+        } {
+            UdCapV1MCUPacket packetInputBtn{};
+            packetInputBtn.address = packetBuffer[2];
+            packetInputBtn.commandType = CommandType::CMD_INPUT_BUTTON;
+            float num3 = lastAngle.f18;
+            if (num3 == 8.0) {
+                if (!powerBtnPressed) {
+                    powerButtonTimeout = std::chrono::system_clock::now();
+                    powerBtnPressed = true;
+                }
+            } else if (num3 != 8.0 && powerBtnPressed) {
+                std::chrono::microseconds dur = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::system_clock::now() - powerButtonTimeout);
+                if (dur.count() > 1500) {
+                    packetInputBtn.button.btnPower = true;
+                }
+                powerBtnPressed = false;
+            }
+            if (num3 == 1.0) {
+                packetInputBtn.button.btnB = true;
+            } else if (num3 == 2.0) {
+                packetInputBtn.button.btnA = true;
+            } else if (num3 == 3.0) {
+                packetInputBtn.button.btnMenu = true;
+            } else if (num3 == 4.0) {
+                packetInputBtn.button.btnJoyStick = true;
+            }
+            callListenCallback(packetInputBtn);
         }
-    //        float num = (lastAngle.f16 - xCenterData) / ((xMaxData - xMinData) / 2.0);
-    //        float num2 = (lastAngle.f17 - yCenterData) / ((yMaxData - yMinData) / 2.0);
-    //        if (num > 1.0)
-    //        {
-    //            num = 1.0;
-    //        }
-    //        if (num < -1.0)
-    //        {
-    //            num = -1.0;
-    //        }
-    //        if (num2 > 1.0)
-    //        {
-    //            num2 = 1.0;
-    //        }
-    //        if (num2 < -1.0)
-    //        {
-    //            num2 = -1.0;
-    //        }
-    //        if (num <= deadZone && num > 0.0 - deadZone && num2 <= deadZone && num2 > 0.0 - deadZone) {
-    //            num = 0.0;
-    //            num2 = 0.0;
-    //        }
-    //        UdCapV1InputData inputData {
-    //            .joyX = num,
-    //            .joyY = num2,
-    //        };
-    //        if (!hasController)
-    //        {
-    //            inputData.joyX = 0.0;
-    //            inputData.joyY = 0.0;
-    //        }
-    //
-    //        float num3 = lastAngle.f18;
-    //        if (num3 <= 3.0) {
-    //            if (num3 <= 1.0) {
-    //                if (num3 != 0.0)
-    //                {
-    //                    if (num3 == 1.0)
-    //                    {
-    //                        inputData.bButton = true;
-    //                    }
-    //                }
-//                else if (is_power_down)
-//                {
-//                    // (DateTime.Now - powerDownTime).TotalMilliseconds C# to C++
-//                    auto now = std::chrono::system_clock::now();
-//                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - powerDownTime);
-//                    if (duration <= 1500.0)
-//                    {
-//                        is_power = true;
-//                    }
-//                    is_power_down = false;
-//                }
-    //            }else if (num3 != 2.0) {
-    //                if (num3 == 3.0) {
-    //                    inputData.menuButton = true;
-    //                }
-    //            } else {
-    //                inputData.aButton = true;
-    //            }
-    //        }else if (num3 <= 5.0) {
-    //            if (num3 != 4.0)
-    //            {
-    //                if (num3 == 5.0)
-    //                {
-    //                }
-    //            } else {
-    //                inputData.joyButton = true;
-    //                if (!thumbOn)
-    //                {
-    //                    inputData.joyButton = false;
-    //                }
-    //            }
-    //        }
-//        else if (num3 != 6.0 && num3 != 7.0 && num3 == 8.0  && !isPowerOn ) {
-//            powerDownTime = DateTime.Now;
-//            is_power_down = true;
-//        }
 
-//        if (centerCalib)
-//        {
-//            x_center_data = f16;
-//            y_center_data = f17;
-//            centerCalib = false;
-//            if (_deviceName.Last() == 'L')
-//            {
-//                UnityMainThreadDispatcher.Enqueue(delegate
-//                                                          {
-//                                                                  PlayerPrefs.SetFloat("L_Rocky_X_Center", f16);
-//                                                          PlayerPrefs.SetFloat("L_Rocky_Y_Center", f17);
-//                                                          });
-//            }
-//            else
-//            {
-//                UnityMainThreadDispatcher.Enqueue(delegate
-//                                                          {
-//                                                                  PlayerPrefs.SetFloat("R_Rocky_X_Center", f16);
-//                                                          PlayerPrefs.SetFloat("R_Rocky_Y_Center", f17);
-//                                                          });
-//            }
-//            x_min_data = 9999f;
-//            x_max_data = 0f;
-//            y_min_data = 9999f;
-//            y_max_data = 0f;
-//        }
+        if (joystickCaliStat == UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE) {
+            if (lastAngle.f16 > 600.0) {
+                xMinData = std::min(xMinData, lastAngle.f16);
+            }
+            if (lastAngle.f16 < 3800.0) {
+                xMaxData = std::max(xMaxData, lastAngle.f16);
+            }
+            if (lastAngle.f17 > 600.0) {
+                yMinData = std::min(yMinData, lastAngle.f17);
+            }
+            if (lastAngle.f17 < 3800.0) {
+                yMaxData = std::max(yMaxData, lastAngle.f17);
+            }
+        } else if (joystickCaliStat == UDCAP_V1_JOYSTICK_CALI_STAT_OK) {
+            float num = (lastAngle.f16 - xCenterData) / ((xMaxData - xMinData) / 2.0);
+            float num2 = (lastAngle.f17 - yCenterData) / ((yMaxData - yMinData) / 2.0);
+            if (num > 1.0) {
+                num = 1.0;
+            }
+            if (num < -1.0) {
+                num = -1.0;
+            }
+            if (num2 > 1.0) {
+                num2 = 1.0;
+            }
+            if (num2 < -1.0) {
+                num2 = -1.0;
+            }
+            if (num <= deadZone && num > 0.0 - deadZone && num2 <= deadZone && num2 > 0.0 - deadZone) {
+                num = 0.0;
+                num2 = 0.0;
+            }
+            UdCapV1MCUPacket joyStickPacket{};
+            joyStickPacket.address = packetBuffer[2];
+            joyStickPacket.commandType = CommandType::CMD_INPUT_JOYSTICK;
+            joyStickPacket.joystickData.joyX = num;
+            joyStickPacket.joystickData.joyY = num2;
+            if (!hasController) {
+                joyStickPacket.joystickData.joyX = 0.0;
+                joyStickPacket.joystickData.joyY = 0.0;
+            }
+            callListenCallback(joyStickPacket);
+        }
 
-//        if (rangeCalib)
-//        {
-//            if (f16 > 600f)
-//            {
-//                x_min_data = Math.Min(x_min_data, f16);
-//            }
-//            if (f16 < 3800f)
-//            {
-//                x_max_data = Math.Max(x_max_data, f16);
-//            }
-//            if (f17 > 600f)
-//            {
-//                y_min_data = Math.Min(y_min_data, f17);
-//            }
-//            if (f17 < 3800f)
-//            {
-//                y_max_data = Math.Max(y_max_data, f17);
-//            }
-//        }
         if (caliStat == UDCAP_V1_HAND_CALI_STAT_COMPLETED) {
-            double f[12] {
+            double f[12]{
                 lastAngle.f4,
                 lastAngle.f5,
                 lastAngle.f6,
@@ -479,7 +421,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
                 lastAngle.f14,
                 lastAngle.f15
             };
-            double array2[12] {
+            double array2[12]{
                 caliAdduction.n4,
                 caliAdduction.n5,
                 caliAdduction.n6,
@@ -493,7 +435,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
                 caliAdduction.n14,
                 caliAdduction.n15
             };
-            double array3[12] {
+            double array3[12]{
                 caliFist.h4,
                 caliFist.h5,
                 caliFist.h6,
@@ -509,12 +451,12 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
             };
             float nn = 100.0;
             std::vector<double> array4 = udCapV1HandAutoCali(f, array2, array3, nn);
-            double a4  = array4[0];
-            double a5  = array4[1];
-            double a6  = array4[2];
-            double a7  = array4[3];
-            double a8  = array4[4];
-            double a9  = array4[5];
+            double a4 = array4[0];
+            double a5 = array4[1];
+            double a6 = array4[2];
+            double a7 = array4[3];
+            double a8 = array4[4];
+            double a9 = array4[5];
             double a10 = array4[6];
             double a11 = array4[7];
             double a12 = array4[8];
@@ -535,37 +477,37 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
             // array5[10][0] = a14;
             // array5[11][0] = a15;
             std::vector<double> array6
-                    {
-                            a4,
-                            a5,
-                            a6,
-                            a7,
-                            a8,
-                            a9,
-                            a10,
-                            a11,
-                            a12,
-                            a13,
-                            a14,
-                            a15
-                    };
+            {
+                a4,
+                a5,
+                a6,
+                a7,
+                a8,
+                a9,
+                a10,
+                a11,
+                a12,
+                a13,
+                a14,
+                a15
+            };
 
-//            if (pre_sensor_data == null)
-//            {
-//                pre_sensor_data = new double[12];
-//                pre_sensor_data[0] = Convert.ToDouble(a4);
-//                pre_sensor_data[1] = Convert.ToDouble(a5);
-//                pre_sensor_data[2] = Convert.ToDouble(a6);
-//                pre_sensor_data[3] = Convert.ToDouble(a7);
-//                pre_sensor_data[4] = Convert.ToDouble(a8);
-//                pre_sensor_data[5] = Convert.ToDouble(a9);
-//                pre_sensor_data[6] = Convert.ToDouble(a10);
-//                pre_sensor_data[7] = Convert.ToDouble(a11);
-//                pre_sensor_data[8] = Convert.ToDouble(a12);
-//                pre_sensor_data[9] = Convert.ToDouble(a13);
-//                pre_sensor_data[10] = Convert.ToDouble(a14);
-//                pre_sensor_data[11] = Convert.ToDouble(a15);
-//            }
+            //            if (pre_sensor_data == null)
+            //            {
+            //                pre_sensor_data = new double[12];
+            //                pre_sensor_data[0] = Convert.ToDouble(a4);
+            //                pre_sensor_data[1] = Convert.ToDouble(a5);
+            //                pre_sensor_data[2] = Convert.ToDouble(a6);
+            //                pre_sensor_data[3] = Convert.ToDouble(a7);
+            //                pre_sensor_data[4] = Convert.ToDouble(a8);
+            //                pre_sensor_data[5] = Convert.ToDouble(a9);
+            //                pre_sensor_data[6] = Convert.ToDouble(a10);
+            //                pre_sensor_data[7] = Convert.ToDouble(a11);
+            //                pre_sensor_data[8] = Convert.ToDouble(a12);
+            //                pre_sensor_data[9] = Convert.ToDouble(a13);
+            //                pre_sensor_data[10] = Convert.ToDouble(a14);
+            //                pre_sensor_data[11] = Convert.ToDouble(a15);
+            //            }
 
             std::string serialNum = getUDCapSerial();
             std::vector<double> list;
@@ -580,32 +522,23 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
             } else {
                 list = AR1LinearAE()->sensor2Angle(array6, {});
             }
-//            Array.Copy(array6, pre_sensor_data, pre_sensor_data.Length);
+            //            Array.Copy(array6, pre_sensor_data, pre_sensor_data.Length);
 
-            if (count < 8)
-            {
-                for (int k = 0; k < 23; k++)
-                {
+            if (count < 8) {
+                for (int k = 0; k < 23; k++) {
                     filterCount[k][count] = list[k];
                 }
                 count++;
-            }
-            else
-            {
-                for (int l = 0; l < 23; l++)
-                {
-                    double array7[23] {};
-                    for (int m = 0; m < 8; m++)
-                    {
+            } else {
+                for (int l = 0; l < 23; l++) {
+                    double array7[23]{};
+                    for (int m = 0; m < 8; m++) {
                         filterCount[l][m] = filterCount[l][m + 1];
                         array7[l] += 1.0 * filterCount[l][m];
                     }
-                    if (list[23] == -1.0 || list[23] == 2.0)
-                    {
+                    if (list[23] == -1.0 || list[23] == 2.0) {
                         filterCount[l][8] = list[l];
-                    }
-                    else
-                    {
+                    } else {
                         filterCount[l][8] = 0.8 * SIGNDATA[static_cast<int>(list[23])][l] + 0.2 * list[l];
                     }
                     list[l] = 2.0 * list[l] + array7[l];
@@ -614,21 +547,20 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
                 }
             }
 
-            double _calibrationDataC[28] {};
-            for (int n = 0; n < list.size(); n++)
-            {
+            double _calibrationDataC[28]{};
+            for (int n = 0; n < list.size(); n++) {
                 _calibrationDataC[n] = list[n];
-
             }
             _calibrationDataC[23] = static_cast<float>(list[23]);
             _calibrationDataC[24] = lastAngle.f0;
             _calibrationDataC[25] = lastAngle.f1;
             _calibrationDataC[26] = lastAngle.f2;
             _calibrationDataC[27] = lastAngle.f3;
-            UdCapV1MCUPacket dataPacket {};
+            UdCapV1MCUPacket dataPacket{};
             dataPacket.address = packetBuffer[2];
             dataPacket.commandType = CommandType::CMD_ANGLE;
-            dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
+            dataPacket.result = std::vector<
+                double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
             callListenCallback(dataPacket);
         }
     }
@@ -643,6 +575,7 @@ void UdCapV1Core::mcuStopData() {
         sendCommand(1, CommandType::CMD_STOP_DATA, {1});
     }
 }
+
 void UdCapV1Core::mcuStartData() {
     if (initState == UD_INIT_STATE_INIT) {
         std::vector<uint8_t> s;
@@ -657,6 +590,7 @@ void UdCapV1Core::mcuStartData() {
         sendCommand(1, CommandType::CMD_DATA, s);
     }
 }
+
 void UdCapV1Core::mcuGetSerialNum() {
     sendCommand(1, CommandType::CMD_SERIAL, {1});
 }
@@ -674,20 +608,29 @@ std::string UdCapV1Core::fromLinkStateToString(LinkState state) {
     }
 }
 
-void UdCapV1Core::runCalibration() {
+void UdCapV1Core::runCalibration(UdCapV1DeviceCaliType type) {
     if (initState != UD_INIT_STATE_INIT) {
         throw std::runtime_error("Core not initialized");
     }
-    if (caliStat != UDCAP_V1_HAND_CALI_STAT_NONE) {
-        throw std::runtime_error("Calibration already called");
+    if (type == UdCapV1DeviceCaliType::UDCAP_V1_DEVICE_CALI_TYPE_HAND) {
+        if (caliStat != UDCAP_V1_HAND_CALI_STAT_NONE) {
+            throw std::runtime_error("Calibration already called");
+        }
+        caliStat = UDCAP_V1_HAND_CALI_STAT_AUTO;
+        memset(&caliFist, 0, sizeof(caliFist));
+        memset(&caliAdduction, 0, sizeof(caliAdduction));
+        memset(&caliProtract, 0, sizeof(caliProtract));
+        caliFist.captured = false;
+        caliAdduction.captured = false;
+        caliProtract.captured = false;
+        UdCapV1MCUPacket caliPacket {};
+        caliPacket.address = 1;
+        caliPacket.commandType = CommandType::CMD_READY;
+        caliPacket.isReady = false;
+        callListenCallback(caliPacket);
+    } else if (type == UdCapV1DeviceCaliType::UDCAP_V1_DEVICE_CALI_TYPE_JOYSTICK) {
+        joystickCaliStat = UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER;
     }
-    caliStat = UDCAP_V1_HAND_CALI_STAT_AUTO;
-    memset(&caliFist, 0, sizeof(caliFist));
-    memset(&caliAdduction, 0, sizeof(caliAdduction));
-    memset(&caliProtract, 0, sizeof(caliProtract));
-    caliFist.captured = false;
-    caliAdduction.captured = false;
-    caliProtract.captured = false;
 }
 
 void UdCapV1Core::captureCalibrationData(UdCapV1HandCaliType type) {
@@ -756,6 +699,11 @@ void UdCapV1Core::clearCalibrationData(UdCapV1HandCaliType type) {
             caliFist.captured = false;
             caliAdduction.captured = false;
             caliProtract.captured = false;
+            UdCapV1MCUPacket caliPacket {};
+            caliPacket.address = 1;
+            caliPacket.commandType = CommandType::CMD_READY;
+            caliPacket.isReady = false;
+            callListenCallback(caliPacket);
             return;
         }
     }
@@ -778,26 +726,27 @@ void UdCapV1Core::clearCalibrationData(UdCapV1HandCaliType type) {
     }
 }
 
-void UdCapV1Core::completeCalibrationData() {
+void UdCapV1Core::completeCalibration(UdCapV1DeviceCaliType type) {
     if (initState != UD_INIT_STATE_INIT) {
         throw std::runtime_error("Core not initialized");
     }
-    if (caliStat == UDCAP_V1_HAND_CALI_STAT_COMPLETED) {
-        throw std::runtime_error("Calibration already completed");
-    }
-    if (caliStat == UDCAP_V1_HAND_CALI_STAT_NONE) {
-        throw std::runtime_error("Calibration not started");
-    }
-    if (!caliFist.captured) {
-        throw std::runtime_error("Fist calibration not captured");
-    }
-    if (!caliAdduction.captured) {
-        throw std::runtime_error("Adduction calibration not captured");
-    }
-    if (!caliProtract.captured) {
-        throw std::runtime_error("Protract calibration not captured");
-    }
-    double f[12] {
+    if (type == UdCapV1DeviceCaliType::UDCAP_V1_DEVICE_CALI_TYPE_HAND) {
+        if (caliStat == UDCAP_V1_HAND_CALI_STAT_COMPLETED) {
+            throw std::runtime_error("Calibration already completed");
+        }
+        if (caliStat == UDCAP_V1_HAND_CALI_STAT_NONE) {
+            throw std::runtime_error("Calibration not started");
+        }
+        if (!caliFist.captured) {
+            throw std::runtime_error("Fist calibration not captured");
+        }
+        if (!caliAdduction.captured) {
+            throw std::runtime_error("Adduction calibration not captured");
+        }
+        if (!caliProtract.captured) {
+            throw std::runtime_error("Protract calibration not captured");
+        }
+        double f[12]{
             lastAngle.f4,
             lastAngle.f5,
             lastAngle.f6,
@@ -810,8 +759,8 @@ void UdCapV1Core::completeCalibrationData() {
             lastAngle.f13,
             lastAngle.f14,
             lastAngle.f15
-    };
-    double array2[12] {
+        };
+        double array2[12]{
             caliAdduction.n4,
             caliAdduction.n5,
             caliAdduction.n6,
@@ -824,8 +773,8 @@ void UdCapV1Core::completeCalibrationData() {
             caliAdduction.n13,
             caliAdduction.n14,
             caliAdduction.n15
-    };
-    double array3[12] {
+        };
+        double array3[12]{
             caliFist.h4,
             caliFist.h5,
             caliFist.h6,
@@ -838,23 +787,87 @@ void UdCapV1Core::completeCalibrationData() {
             caliFist.h13,
             caliProtract.h14,
             caliFist.h15
-    };
-    bool calibrationSuccess = false;
-    for (int i = 0; i < 12; i++)
-    {
-        if (abs(array3[i] - array2[i]) > 25.0)
-        {
-            calibrationSuccess = true;
+        };
+        bool calibrationSuccess = false;
+        for (int i = 0; i < 12; i++) {
+            if (abs(array3[i] - array2[i]) > 25.0) {
+                calibrationSuccess = true;
+            }
         }
+        if (!calibrationSuccess) {
+            caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
+            UdCapV1MCUPacket caliPacket {};
+            caliPacket.address = 1;
+            caliPacket.commandType = CommandType::CMD_READY;
+            caliPacket.isReady = false;
+            callListenCallback(caliPacket);
+            throw std::runtime_error("Calibration failed");
+        }
+        caliStat = UDCAP_V1_HAND_CALI_STAT_COMPLETED;
+        UdCapV1MCUPacket caliPacket {};
+        caliPacket.address = 1;
+        caliPacket.commandType = CommandType::CMD_READY;
+        caliPacket.isReady = true;
+        callListenCallback(caliPacket);
+    } else if (type == UdCapV1DeviceCaliType::UDCAP_V1_DEVICE_CALI_TYPE_JOYSTICK) {
+        joystickCaliStat = UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_OK;
     }
-    if (!calibrationSuccess)
-    {
-        caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
-        throw std::runtime_error("Calibration failed");
-    }
-    caliStat = UDCAP_V1_HAND_CALI_STAT_COMPLETED;
 }
 
-UdCapV1HandCaliStat UdCapV1Core::getCalibrationStatus() const {
+void UdCapV1Core::captureJoystickData(UdCapV1JoystickCaliType type) {
+    if (initState != UD_INIT_STATE_INIT) {
+        throw std::runtime_error("Core not initialized");
+    }
+    if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_OK) {
+        throw std::runtime_error("Not in calibration mode");
+    }
+    if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER) {
+        if (type == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER) {
+            xCenterData = lastAngle.f16;
+            yCenterData = lastAngle.f17;
+            joystickCaliStat = UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE;
+        } else {
+            throw std::runtime_error("Error on calibrate type with ZONE, now calibrating CENTER");
+        }
+    } else if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE) {
+        if (type == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER) {
+            std::cout << "Joystick zone calibration is running on data callback automatically." << std::endl;
+        } else {
+            throw std::runtime_error("Error on calibrate type with CENTER, now calibrating ZONE");
+        }
+    }
+}
+
+void UdCapV1Core::clearJoystickData(UdCapV1JoystickCaliType type) {
+    if (initState != UD_INIT_STATE_INIT) {
+        throw std::runtime_error("Core not initialized");
+    }
+    if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_OK) {
+        throw std::runtime_error("Not in calibration mode");
+    }
+    if (type == UDCAP_V1_JOYSTICK_CALI_TYPE_ALL) {
+        xCenterData = Default_xCenterData;
+        yCenterData = Default_yCenterData;
+        xMinData = Default_xMinData;
+        yMinData = Default_yMinData;
+        xMaxData = Default_xMaxData;
+        yMaxData = Default_yMaxData;
+    } else if (type == UDCAP_V1_JOYSTICK_CALI_TYPE_CENTER) {
+        xCenterData = Default_xCenterData;
+        yCenterData = Default_yCenterData;
+    } else if (type == UDCAP_V1_JOYSTICK_CALI_TYPE_ZONE) {
+        xMinData = Default_xMinData;
+        yMinData = Default_yMinData;
+        xMaxData = Default_xMaxData;
+        yMaxData = Default_yMaxData;
+    }
+    joystickCaliStat = UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_OK;
+}
+
+UdCapV1HandCaliStat UdCapV1Core::getHandCalibrationStatus() const {
     return caliStat;
+}
+
+UdCapV1JoystickCaliStat UdCapV1Core::getJoystickCalibrationStatus() const {
+    return joystickCaliStat;
 }

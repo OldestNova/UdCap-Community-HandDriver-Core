@@ -6,7 +6,15 @@
 #define SERIALREBORN_UDCAPV1CORE_H
 
 #include <map>
+#include <chrono>
 #include <PortAccessor.h>
+
+#define Default_xCenterData 1850.0;
+#define Default_yCenterData 1850.0;
+#define Default_xMaxData 3750.0;
+#define Default_xMinData 620.0;
+#define Default_yMaxData 3750.0;
+#define Default_yMinData 620.0;
 
 enum UdCapV1StateMachine {
     NOOP,
@@ -21,7 +29,10 @@ enum UdCapV1StateMachine {
 };
 
 enum CommandType {
-    CMD_ANGLE = -1,
+    CMD_INPUT_BUTTON = -4,
+    CMD_INPUT_JOYSTICK = -3,
+    CMD_ANGLE = -2,
+    CMD_READY = -1,
     CMD_DATA = 1,
     CMD_BATTERY = 5,
     CMD_SERIAL = 6,
@@ -39,6 +50,19 @@ enum LinkState {
     LINK_STATE_CONNECTED = 1
 };
 
+struct UdCapV1JoystickData {
+    float joyX;
+    float joyY;
+};
+
+struct UdCapV1ButtonData {
+    bool btnA;
+    bool btnB;
+    bool btnMenu;
+    bool btnJoyStick;
+    bool btnPower;
+};
+
 struct UdCapV1MCUPacket {
     uint8_t address;
     CommandType commandType;
@@ -48,8 +72,11 @@ struct UdCapV1MCUPacket {
     uint16_t battery;
     std::string deviceSerialNum;
     bool isEnterprise;
+    bool isReady;
     std::vector<int16_t> angle;
     std::vector<double> result;
+    UdCapV1JoystickData joystickData {};
+    UdCapV1ButtonData button {};
 };
 
 enum UdTarget {
@@ -142,16 +169,6 @@ struct UdCapV1HandData {
     float f18;
 };
 
-struct UdCapV1InputData {
-    float joyX;
-    float joyY;
-
-    bool joyButton;
-    bool aButton;
-    bool bButton;
-    bool menuButton;
-};
-
 enum UdCapV1HandCaliStat {
     UDCAP_V1_HAND_CALI_STAT_AUTO = -1,
     UDCAP_V1_HAND_CALI_STAT_NONE = 0,
@@ -161,11 +178,28 @@ enum UdCapV1HandCaliStat {
     UDCAP_V1_HAND_CALI_STAT_COMPLETED = 4
 };
 
+enum UdCapV1JoystickCaliStat {
+    UDCAP_V1_JOYSTICK_CALI_STAT_OK = 0,
+    UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER = 1,
+    UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE = 2,
+};
+
 enum UdCapV1HandCaliType {
     UDCAP_V1_HAND_CALI_TYPE_ALL = 0,
     UDCAP_V1_HAND_CALI_TYPE_FIST = 1,
     UDCAP_V1_HAND_CALI_TYPE_ADDUCTION = 2,
     UDCAP_V1_HAND_CALI_TYPE_PROTRACT = 3,
+};
+
+enum UdCapV1JoystickCaliType {
+    UDCAP_V1_JOYSTICK_CALI_TYPE_ALL = 0,
+    UDCAP_V1_JOYSTICK_CALI_TYPE_CENTER = 1,
+    UDCAP_V1_JOYSTICK_CALI_TYPE_ZONE = 2,
+};
+
+enum UdCapV1DeviceCaliType {
+    UDCAP_V1_DEVICE_CALI_TYPE_HAND = 0,
+    UDCAP_V1_DEVICE_CALI_TYPE_JOYSTICK = 1,
 };
 
 class UdCapV1Core {
@@ -184,21 +218,29 @@ public:
 
     std::string getUDCapSerial() const;
 
+
+
     void mcuStopData();
 
     void mcuStartData();
 
     void mcuGetSerialNum();
 
-    void runCalibration();
+    void runCalibration(UdCapV1DeviceCaliType type);
 
     void captureCalibrationData(UdCapV1HandCaliType type);
 
     void clearCalibrationData(UdCapV1HandCaliType type);
 
-    void completeCalibrationData();
+    void completeCalibration(UdCapV1DeviceCaliType type);
 
-    UdCapV1HandCaliStat getCalibrationStatus() const;
+    void captureJoystickData(UdCapV1JoystickCaliType type); // TODO
+
+    void clearJoystickData(UdCapV1JoystickCaliType type); // TODO
+
+    UdCapV1HandCaliStat getHandCalibrationStatus() const;
+
+    UdCapV1JoystickCaliStat getJoystickCalibrationStatus() const;
 
 private:
     void parsePacket(const std::vector<uint8_t> &);
@@ -220,6 +262,7 @@ private:
     UdCapV1HandCaliAdduction caliAdduction;
     UdCapV1HandCaliProtract caliProtract;
     UdCapV1HandData lastAngle{};
+    UdCapV1JoystickCaliStat joystickCaliStat = UDCAP_V1_JOYSTICK_CALI_STAT_OK;
     float xCenterData = 1850.0;
     float yCenterData = 1850.0;
     float xMaxData = 3750.0;
@@ -228,6 +271,10 @@ private:
     float yMinData = 620.0;
     float deadZone = 0.15;
     bool thumbOn = true;
+
+    std::chrono::system_clock::time_point powerButtonTimeout;
+    bool powerBtnPressed = false;
+
     int count = 0;
     double filterCount[23][9]{};
     const double SIGNDATA[2][23]{
