@@ -11,7 +11,7 @@
 enum UdCapV1StateMachine {
     NOOP,
     GET_170,
-//    PACKET_HEADER_DEVICE_ID,
+    //    PACKET_HEADER_DEVICE_ID,
     PACKET_HEADER_ADDRESS,
     PACKET_HEADER_COMMAND_TYPE,
     PACKET_HEADER_DATA_TYPE,
@@ -64,14 +64,18 @@ enum UdInitState {
     UD_INIT_STATE_PRE_INIT = 1,
     UD_INIT_STATE_INIT = 2,
 };
+
 class UdCapHandV1PacketRealignmentHelper : public PacketRealignmentHelper {
 public:
     UdCapHandV1PacketRealignmentHelper() = default;
+
     ~UdCapHandV1PacketRealignmentHelper() override = default;
-    std::vector<std::vector<uint8_t>> processPacket(const std::vector<uint8_t>& data) override;
+
+    std::vector<std::vector<uint8_t> > processPacket(const std::vector<uint8_t> &data) override;
+
 private:
     std::vector<uint8_t> packetBuffer;
-    std::vector<std::vector<uint8_t>> processedPacket;
+    std::vector<std::vector<uint8_t> > processedPacket;
     uint32_t remainedLength = 0;
     UdCapV1StateMachine stateMachine = NOOP;
 };
@@ -89,6 +93,7 @@ struct UdCapV1HandCaliFist {
     double h13;
     double h15;
 };
+
 struct UdCapV1HandCaliAdduction {
     bool captured;
     double n1;
@@ -107,12 +112,14 @@ struct UdCapV1HandCaliAdduction {
     double n14;
     double n15;
 };
+
 struct UdCapV1HandCaliProtract {
     bool captured;
     double h8;
     double h11;
     double h14;
 };
+
 struct UdCapV1HandData {
     float f0;
     float f1;
@@ -148,11 +155,12 @@ struct UdCapV1InputData {
 enum UdCapV1HandCaliStat {
     UDCAP_V1_HAND_CALI_STAT_AUTO = -1,
     UDCAP_V1_HAND_CALI_STAT_NONE = 0,
-//    UDCAP_V1_HAND_CALI_STAT_FIST = 1,
-//    UDCAP_V1_HAND_CALI_STAT_ADDUCTION = 2,
-//    UDCAP_V1_HAND_CALI_STAT_PROTRACT = 3,
+    //    UDCAP_V1_HAND_CALI_STAT_FIST = 1,
+    //    UDCAP_V1_HAND_CALI_STAT_ADDUCTION = 2,
+    //    UDCAP_V1_HAND_CALI_STAT_PROTRACT = 3,
     UDCAP_V1_HAND_CALI_STAT_COMPLETED = 4
 };
+
 enum UdCapV1HandCaliType {
     UDCAP_V1_HAND_CALI_TYPE_ALL = 0,
     UDCAP_V1_HAND_CALI_TYPE_FIST = 1,
@@ -163,30 +171,45 @@ enum UdCapV1HandCaliType {
 class UdCapV1Core {
 public:
     UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor);
+
     ~UdCapV1Core();
 
     void sendCommand(uint8_t humanAddress, CommandType commandType, const std::vector<uint8_t> &data);
-    std::function<void()> listen(const std::function<void(const UdCapV1MCUPacket &)>& callback);
+
+    std::function<void()> listen(const std::function<void(const UdCapV1MCUPacket &)> &callback);
+
     static std::string fromLinkStateToString(LinkState state);
+
     UdTarget getTarget() const;
+
     std::string getUDCapSerial() const;
+
     void mcuStopData();
+
     void mcuStartData();
+
     void mcuGetSerialNum();
 
     void runCalibration();
+
     void captureCalibrationData(UdCapV1HandCaliType type);
+
     void clearCalibrationData(UdCapV1HandCaliType type);
+
     void completeCalibrationData();
+
     UdCapV1HandCaliStat getCalibrationStatus() const;
+
 private:
     void parsePacket(const std::vector<uint8_t> &);
+
     void callListenCallback(const UdCapV1MCUPacket &packet);
+
     std::function<void()> unlistenPortCallback;
     std::shared_ptr<PortAccessor> portAccessor;
     std::string udCapSerial;
     UdTarget target = UD_TARGET_UNKNOWN;
-    std::vector<std::function<void(const UdCapV1MCUPacket &)>> listenCallbacks;
+    std::vector<std::function<void(const UdCapV1MCUPacket &)> > listenCallbacks;
     std::mutex callbackMutex;
     uint16_t lastBattery = 0;
     bool isEnterprise = false;
@@ -196,7 +219,7 @@ private:
     UdCapV1HandCaliFist caliFist;
     UdCapV1HandCaliAdduction caliAdduction;
     UdCapV1HandCaliProtract caliProtract;
-    UdCapV1HandData lastAngle {};
+    UdCapV1HandData lastAngle{};
     float xCenterData = 1850.0;
     float yCenterData = 1850.0;
     float xMaxData = 3750.0;
@@ -205,6 +228,20 @@ private:
     float yMinData = 620.0;
     float deadZone = 0.15;
     bool thumbOn = true;
+    int count = 0;
+    double filterCount[23][9]{};
+    const double SIGNDATA[2][23]{
+        {
+            -47.0, -25.0, -10.0, 20.0, -40.0, -70.0, -50.0, 0.0, 0.0, 0.0,
+            0.0, -5.0, 0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 20.0,
+            -5.0, 0.0, 0.0
+        },
+        {
+            0.0, 0.0, -45.0, 15.0, -18.0, -40.0, -90.0, 0.0, -70.0, -110.0,
+            -90.0, 0.0, -70.0, -110.0, -90.0, 0.0, -70.0, -110.0, -90.0, 0.0,
+            -15.0, 0.0, 0.0
+        }
+    };
 };
 
 

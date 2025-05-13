@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(SerialReborn)
+project(UdCapCommunityDriver)
 
 set(CMAKE_CXX_STANDARD 17)
 file(
@@ -39,10 +39,13 @@ CPMAddPackage(
         "BUILD_SHARED_LIBS OFF" "BOOST_INCLUDE_LIBRARIES container\\\;asio\\\;optional\\\;date_time" # Note the escapes!
 )
 
+add_subdirectory(ar1_linear)
+include_directories(ar1_linear/src)
+
 file(GLOB_RECURSE SRC_FILES
     src/*.cpp
     src/*.h
 )
 
-add_executable(SerialReborn ${SRC_FILES})
-target_link_libraries(SerialReborn PRIVATE usb-1.0 hidapi::hidapi usbp Boost::asio Boost::container)
+add_executable(UdCapCommunityDriver ${SRC_FILES})
+target_link_libraries(UdCapCommunityDriver PRIVATE usb-1.0 hidapi::hidapi usbp Boost::asio Boost::container AR1Linear)

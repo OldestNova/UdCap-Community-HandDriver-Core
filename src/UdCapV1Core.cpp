@@ -3,6 +3,12 @@
 //
 
 #include "UdCapV1Core.h"
+#include <AR1Linear.hpp>
+
+ImportAR1Linear(AR1LinearAA)
+ImportAR1Linear(AR1LinearAD)
+ImportAR1Linear(AR1LinearAE)
+ImportAR1Linear(AR1LinearAG)
 
 uint8_t calculateCRC(const std::vector<uint8_t>& data, bool ignoreLast) {
     uint8_t crc = 0;
@@ -503,50 +509,47 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
             };
             float nn = 100.0;
             std::vector<double> array4 = udCapV1HandAutoCali(f, array2, array3, nn);
-//            a4 = Convert.ToSingle(array4[0]);
-//            a5 = Convert.ToSingle(array4[1]);
-//            a6 = Convert.ToSingle(array4[2]);
-//            a7 = Convert.ToSingle(array4[3]);
-//            a8 = Convert.ToSingle(array4[4]);
-//            a9 = Convert.ToSingle(array4[5]);
-//            a10 = Convert.ToSingle(array4[6]);
-//            a11 = Convert.ToSingle(array4[7]);
-//            a12 = Convert.ToSingle(array4[8]);
-//            a13 = Convert.ToSingle(array4[9]);
-//            a14 = Convert.ToSingle(array4[10]);
-//            a15 = Convert.ToSingle(array4[11]);
-//            double[][] array5 = new double[12][];
-//            for (int j = 0; j < 12; j++)
-//            {
-//                array5[j] = new double[1];
-//            }
-//            array5[0][0] = Convert.ToDouble(a4);
-//            array5[1][0] = Convert.ToDouble(a5);
-//            array5[2][0] = Convert.ToDouble(a6);
-//            array5[3][0] = Convert.ToDouble(a7);
-//            array5[4][0] = Convert.ToDouble(a8);
-//            array5[5][0] = Convert.ToDouble(a9);
-//            array5[6][0] = Convert.ToDouble(a10);
-//            array5[7][0] = Convert.ToDouble(a11);
-//            array5[8][0] = Convert.ToDouble(a12);
-//            array5[9][0] = Convert.ToDouble(a13);
-//            array5[10][0] = Convert.ToDouble(a14);
-//            array5[11][0] = Convert.ToDouble(a15);
-//            double[] array6 = new double[12]
-//                    {
-//                            Convert.ToDouble(a4),
-//                            Convert.ToDouble(a5),
-//                            Convert.ToDouble(a6),
-//                            Convert.ToDouble(a7),
-//                            Convert.ToDouble(a8),
-//                            Convert.ToDouble(a9),
-//                            Convert.ToDouble(a10),
-//                            Convert.ToDouble(a11),
-//                            Convert.ToDouble(a12),
-//                            Convert.ToDouble(a13),
-//                            Convert.ToDouble(a14),
-//                            Convert.ToDouble(a15)
-//                    };
+            double a4  = array4[0];
+            double a5  = array4[1];
+            double a6  = array4[2];
+            double a7  = array4[3];
+            double a8  = array4[4];
+            double a9  = array4[5];
+            double a10 = array4[6];
+            double a11 = array4[7];
+            double a12 = array4[8];
+            double a13 = array4[9];
+            double a14 = array4[10];
+            double a15 = array4[11];
+            // double array5[12][1];
+            // array5[0][0]  = a4;
+            // array5[1][0]  = a5;
+            // array5[2][0]  = a6;
+            // array5[3][0]  = a7;
+            // array5[4][0]  = a8;
+            // array5[5][0]  = a9;
+            // array5[6][0]  = a10;
+            // array5[7][0]  = a11;
+            // array5[8][0]  = a12;
+            // array5[9][0]  = a13;
+            // array5[10][0] = a14;
+            // array5[11][0] = a15;
+            std::vector<double> array6
+                    {
+                            a4,
+                            a5,
+                            a6,
+                            a7,
+                            a8,
+                            a9,
+                            a10,
+                            a11,
+                            a12,
+                            a13,
+                            a14,
+                            a15
+                    };
+
 //            if (pre_sensor_data == null)
 //            {
 //                pre_sensor_data = new double[12];
@@ -563,49 +566,61 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
 //                pre_sensor_data[10] = Convert.ToDouble(a14);
 //                pre_sensor_data[11] = Convert.ToDouble(a15);
 //            }
-//            string text = SerialPortManager.UDE_GetSerialNum(_deviceIdentifier);
-//            List<double> list = new List<double>();
-//            list = (text.IsNullOrEmpty() ? AR1_linear_AE_1.Senser2Angle(array6, pre_sensor_data) : (text[5].Equals('A') ? AR1_linear_AA_1.Senser2Angle(array6, pre_sensor_data) : (text[5].Equals('B') ? AR1_linear_AD_1.Senser2Angle(array6, pre_sensor_data) : ((!text[5].Equals('C') && !text[5].Equals('D')) ? ((!text[5].Equals('E') && !text[5].Equals('F')) ? AR1_linear_AG_1.Senser2Angle(array6, pre_sensor_data) : AR1_linear_AG_1.Senser2Angle(array6, pre_sensor_data)) : AR1_linear_AE_1.Senser2Angle(array6, pre_sensor_data)))));
-//            Array.Copy(array6, pre_sensor_data, pre_sensor_data.Length);
+
+            std::string serialNum = getUDCapSerial();
             std::vector<double> list;
-//            if (count < 8)
-//            {
-//                for (int k = 0; k < 23; k++)
-//                {
-//                    filtercount[k, count] = list[k];
-//                }
-//                count++;
-//            }
-//            else
-//            {
-//                for (int l = 0; l < 23; l++)
-//                {
-//                    double[] array7 = new double[23];
-//                    for (int m = 0; m < 8; m++)
-//                    {
-//                        filtercount[l, m] = filtercount[l, m + 1];
-//                        array7[l] += 1.0 * filtercount[l, m];
-//                    }
-//                    if (list[23] == -1.0 || list[23] == 2.0)
-//                    {
-//                        filtercount[l, 8] = list[l];
-//                    }
-//                    else
-//                    {
-//                        filtercount[l, 8] = 0.8 * Signdata[(int)list[23]][l] + 0.2 * list[l];
-//                    }
-//                    list[l] = 2.0 * list[l] + array7[l];
-//                    list[l] = (int)list[l];
-//                    list[l] /= 10.0;
-//                }
-//            }
+            if (serialNum.empty()) {
+                list = AR1LinearAE()->sensor2Angle(array6, {});
+            } else if (serialNum[5] == 'A') {
+                list = AR1LinearAA()->sensor2Angle(array6, {});
+            } else if (serialNum[5] == 'B') {
+                list = AR1LinearAD()->sensor2Angle(array6, {});
+            } else if (serialNum[5] != 'C' && serialNum[5] != 'D') {
+                list = AR1LinearAG()->sensor2Angle(array6, {});
+            } else {
+                list = AR1LinearAE()->sensor2Angle(array6, {});
+            }
+//            Array.Copy(array6, pre_sensor_data, pre_sensor_data.Length);
+
+            if (count < 8)
+            {
+                for (int k = 0; k < 23; k++)
+                {
+                    filterCount[k][count] = list[k];
+                }
+                count++;
+            }
+            else
+            {
+                for (int l = 0; l < 23; l++)
+                {
+                    double array7[23] {};
+                    for (int m = 0; m < 8; m++)
+                    {
+                        filterCount[l][m] = filterCount[l][m + 1];
+                        array7[l] += 1.0 * filterCount[l][m];
+                    }
+                    if (list[23] == -1.0 || list[23] == 2.0)
+                    {
+                        filterCount[l][8] = list[l];
+                    }
+                    else
+                    {
+                        filterCount[l][8] = 0.8 * SIGNDATA[static_cast<int>(list[23])][l] + 0.2 * list[l];
+                    }
+                    list[l] = 2.0 * list[l] + array7[l];
+                    list[l] = static_cast<int>(list[l]);
+                    list[l] /= 10.0;
+                }
+            }
+
             double _calibrationDataC[28] {};
             for (int n = 0; n < list.size(); n++)
             {
                 _calibrationDataC[n] = list[n];
 
             }
-            _calibrationDataC[23] = (float)list[23];
+            _calibrationDataC[23] = static_cast<float>(list[23]);
             _calibrationDataC[24] = lastAngle.f0;
             _calibrationDataC[25] = lastAngle.f1;
             _calibrationDataC[26] = lastAngle.f2;
@@ -613,7 +628,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> & packetBuffer) {
             UdCapV1MCUPacket dataPacket {};
             dataPacket.address = packetBuffer[2];
             dataPacket.commandType = CommandType::CMD_ANGLE;
-            dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + sizeof(_calibrationDataC) / sizeof(_calibrationDataC[0]));
+            dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
             callListenCallback(dataPacket);
         }
     }
