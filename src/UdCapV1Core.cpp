@@ -595,6 +595,14 @@ void UdCapV1Core::mcuGetSerialNum() {
     sendCommand(1, CommandType::CMD_SERIAL, {1});
 }
 
+void UdCapV1Core::mcuSendVibration(int index, float second, int strength) {
+    if (index != 1 && index != 2) return;
+    float rSecond = ((second <= 0.04) ? 0.04 : ((second > 2.5) ? 2.5 : second));
+    int rStrength = ((strength < 4) ? 4 : ((strength > 10) ? 10 : strength));
+    sendCommand(1, CommandType::CMD_VIBRATION, { (uint8_t)index, 0, (uint8_t)(rSecond * 100.0), (uint8_t)rStrength });
+}
+
+
 std::string UdCapV1Core::fromLinkStateToString(LinkState state) {
     switch (state) {
         case LINK_STATE_UNKNOWN:

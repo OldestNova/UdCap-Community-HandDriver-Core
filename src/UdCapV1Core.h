@@ -34,6 +34,7 @@ enum CommandType {
     CMD_ANGLE = -2,
     CMD_READY = -1,
     CMD_DATA = 1,
+    CMD_VIBRATION = 5,
     CMD_BATTERY = 5,
     CMD_SERIAL = 6,
     CMD_LINK_STATE = 7,
@@ -225,6 +226,8 @@ public:
     void mcuStartData();
 
     void mcuGetSerialNum();
+
+    void mcuSendVibration(int index, float second, int strength);
 
     void runCalibration(UdCapV1DeviceCaliType type);
 
