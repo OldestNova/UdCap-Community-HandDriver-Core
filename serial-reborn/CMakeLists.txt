@@ -46,3 +46,9 @@ file(GLOB_RECURSE SRC_FILES
 
 add_library(SerialReborn STATIC ${SRC_FILES})
 target_link_libraries(SerialReborn PUBLIC usb-1.0 hidapi::hidapi usbp Boost::asio Boost::container)
+IF (WIN32)
+    add_custom_command(TARGET SerialReborn POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/_deps/hidapi-build/src/windows/hidapi.dll"
+            $<TARGET_FILE_DIR:SerialReborn>)
+ENDIF ()

@@ -23,3 +23,9 @@ file(GLOB_RECURSE SRC_FILES
 
 add_executable(UdCapCommunityDriver ${SRC_FILES})
 target_link_libraries(UdCapCommunityDriver PRIVATE SerialReborn AR1Linear)
+IF (WIN32)
+    add_custom_command(TARGET UdCapCommunityDriver POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/serial-reborn/hidapi.dll"
+            $<TARGET_FILE_DIR:UdCapCommunityDriver>)
+ENDIF ()
