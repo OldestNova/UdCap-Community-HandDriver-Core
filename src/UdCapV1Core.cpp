@@ -4,6 +4,7 @@
 
 #include "UdCapV1Core.h"
 #include <AR1Linear.hpp>
+#include <filesystem>
 
 ImportAR1Linear(AR1LinearAA)
 ImportAR1Linear(AR1LinearAD)
@@ -293,6 +294,28 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             }
         }
         mcuStartData();
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SET_CHANNEL) {
+        UdCapV1MCUPacket packet{};
+        packet.address = packetBuffer[2];
+        packet.commandType = CommandType::CMD_SET_CHANNEL;
+        auto deData = decodeXOR(data);
+        packet.channel = deData[0];
+        packet.channelResult = deData[1];
+        callListenCallback(packet);
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_GET_CHANNEL) {
+        UdCapV1MCUPacket packet{};
+        packet.address = packetBuffer[2];
+        packet.commandType = CommandType::CMD_GET_CHANNEL;
+        auto deData = decodeXOR(data);
+        packet.channel = deData[0];
+        callListenCallback(packet);
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_FW_VERSION) {
+        UdCapV1MCUPacket packet{};
+        packet.address = packetBuffer[2];
+        packet.commandType = CommandType::CMD_FW_VERSION;
+        auto deData = decodeXOR(data);
+        packet.fwVersion = std::string(deData.begin(), deData.end());
+        callListenCallback(packet);
     } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_DATA) {
         UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
@@ -878,4 +901,73 @@ UdCapV1HandCaliStat UdCapV1Core::getHandCalibrationStatus() const {
 
 UdCapV1JoystickCaliStat UdCapV1Core::getJoystickCalibrationStatus() const {
     return joystickCaliStat;
+}
+
+void UdCapV1Core::mcuSetChannel(uint8_t channel) {
+    sendCommand(1, CommandType::CMD_SET_CHANNEL, { channel });
+}
+
+void UdCapV1Core::mcuGetChannel() {
+    sendCommand(1, CommandType::CMD_GET_CHANNEL, { 1 });
+}
+
+void UdCapV1Core::mcuReset() {
+    sendCommand(1, (CommandType)10, { 1 });
+}
+
+bool UdCapV1Core::loadPref() {
+    std::filesystem::path prefDir("prefs");
+    std::filesystem::path dirPath = std::filesystem::relative(std::filesystem::current_path(), prefDir);
+    if (!std::filesystem::exists(dirPath)) {
+        if (!std::filesystem::create_directory(dirPath)) {
+            return false;
+        }
+    }
+    std::filesystem::path prefFile(getUDCapSerial() + ".json");
+    std::filesystem::path file = std::filesystem::relative(dirPath, prefFile);
+    if (!std::filesystem::exists(file)) {
+        return false;
+    }
+    // TODO
+    return false;
+}
+
+bool UdCapV1Core::loadPref(std::string path) {
+    std::filesystem::path filePath(path);
+    std::filesystem::path parentPath = filePath.parent_path();
+    if (!std::filesystem::exists(parentPath)) {
+        return false;
+    }
+    if (!std::filesystem::exists(filePath)) {
+        return false;
+    }
+    // TODO
+    return false;
+}
+
+bool UdCapV1Core::savePref() {
+    std::filesystem::path prefDir("prefs");
+    std::filesystem::path dirPath = std::filesystem::relative(std::filesystem::current_path(), prefDir);
+    if (!std::filesystem::exists(dirPath)) {
+        if (!std::filesystem::create_directory(dirPath)) {
+            return false;
+        }
+    }
+    std::filesystem::path prefFile(getUDCapSerial() + ".json");
+    std::filesystem::path file = std::filesystem::relative(dirPath, prefFile);
+    if (!std::filesystem::exists(file)) {
+        return false;
+    }
+    // TODO
+    return false;
+}
+
+bool UdCapV1Core::savePref(std::string path) {
+    std::filesystem::path filePath(path);
+    std::filesystem::path parentPath = filePath.parent_path();
+    if (!std::filesystem::exists(parentPath)) {
+        return false;
+    }
+    // TODO
+    return false;
 }

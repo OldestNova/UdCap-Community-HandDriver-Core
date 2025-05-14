@@ -69,6 +69,7 @@ struct UdCapV1MCUPacket {
     CommandType commandType;
     LinkState linkState;
     uint16_t channel;
+    uint16_t channelResult;
     std::string fwVersion;
     uint16_t battery;
     std::string deviceSerialNum;
@@ -227,6 +228,12 @@ public:
 
     void mcuGetSerialNum();
 
+    void mcuGetChannel();
+
+    void mcuSetChannel(uint8_t channel);
+
+    void mcuReset();
+
     void mcuSendVibration(int index, float second, int strength);
 
     void runCalibration(UdCapV1DeviceCaliType type);
@@ -237,13 +244,22 @@ public:
 
     void completeCalibration(UdCapV1DeviceCaliType type);
 
-    void captureJoystickData(UdCapV1JoystickCaliType type); // TODO
+    void captureJoystickData(UdCapV1JoystickCaliType type);
 
-    void clearJoystickData(UdCapV1JoystickCaliType type); // TODO
+    void clearJoystickData(UdCapV1JoystickCaliType type);
 
     UdCapV1HandCaliStat getHandCalibrationStatus() const;
 
     UdCapV1JoystickCaliStat getJoystickCalibrationStatus() const;
+
+    // TODO
+    bool loadPref();
+
+    bool loadPref(std::string path);
+
+    bool savePref();
+
+    bool savePref(std::string path);
 
 private:
     void parsePacket(const std::vector<uint8_t> &);
@@ -274,6 +290,7 @@ private:
     float yMinData = 620.0;
     float deadZone = 0.15;
     bool thumbOn = true;
+    bool isSettingChannel = false;
 
     std::chrono::system_clock::time_point powerButtonTimeout;
     bool powerBtnPressed = false;
