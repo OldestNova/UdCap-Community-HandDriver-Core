@@ -8,6 +8,7 @@
 #include <map>
 #include <chrono>
 #include <PortAccessor.h>
+#include <queue>
 
 #define Default_xCenterData 1850.0;
 #define Default_yCenterData 1850.0;
@@ -266,6 +267,11 @@ private:
 
     void callListenCallback(const UdCapV1MCUPacket &packet);
 
+    std::thread eventLoop;
+    std::atomic_bool eventLoopRunning;
+    std::queue<UdCapV1MCUPacket> packetQueue;
+    std::mutex eventLoopMutex;
+    std::condition_variable eventCondition;
     std::function<void()> unlistenPortCallback;
     std::shared_ptr<PortAccessor> portAccessor;
     std::string udCapSerial;

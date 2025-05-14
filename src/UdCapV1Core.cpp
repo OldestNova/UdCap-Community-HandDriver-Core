@@ -107,7 +107,22 @@ std::vector<double> udCapV1HandAutoCali(const double f[], const double n[], cons
     return array;
 }
 
-UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): portAccessor(std::move(portAccessor)) {
+UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopRunning(true), portAccessor(std::move(portAccessor)) {
+    std::thread t([this]() {
+        while (eventLoopRunning.load()) {
+            if (packetQueue.empty()) {
+                std::unique_lock lk(eventLoopMutex);
+                eventCondition.wait_for(lk, std::chrono::milliseconds(1000));
+                continue;
+            }
+            UdCapV1MCUPacket packet = packetQueue.front();
+            packetQueue.pop();
+            for (const auto &callback: listenCallbacks) {
+                callback(packet);
+            }
+        }
+    });
+    eventLoop = std::move(t);
     this->portAccessor->openPort();
     this->portAccessor->setBaudRate(115200);
     if (!this->portAccessor->hasPacketRealignmentHelper()) {
@@ -125,6 +140,8 @@ UdCapV1Core::~UdCapV1Core() {
     this->mcuStopData();
     this->unlistenPortCallback();
     this->portAccessor->stopContinuousRead();
+    this->eventLoopRunning.store(false);
+    this->eventLoop.join();
 }
 
 std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1MCUPacket &)> &callback) {
@@ -141,9 +158,8 @@ std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1
 
 void UdCapV1Core::callListenCallback(const UdCapV1MCUPacket &packet) {
     std::lock_guard guard(callbackMutex);
-    for (const auto &callback: listenCallbacks) {
-        callback(packet);
-    }
+    packetQueue.push(packet);
+    eventCondition.notify_all();
 }
 
 void UdCapV1Core::sendCommand(uint8_t humanAddress, CommandType commandType, const std::vector<uint8_t> &data) {
