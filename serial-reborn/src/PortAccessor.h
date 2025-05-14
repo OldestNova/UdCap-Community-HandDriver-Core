@@ -11,6 +11,7 @@
 #include <vector>
 #include <functional>
 #include <thread>
+#include <hidapi.h>
 
 enum StopBit {
     STOPBIT_1,
@@ -64,7 +65,7 @@ private:
     SerialDevice serialDevice;
     boost::asio::io_context io;
     std::unique_ptr<DeadlineSocket<boost::asio::serial_port>> serialPort;
-    hid_device* hidDevice = nullptr;
+    hid_device* hidDevice = nullptr; // hid_device
     size_t readSize = 64;
     size_t timeout = 500;
     bool isOpenFlag = false;

@@ -2,10 +2,10 @@
 // Created by max_3 on 2025/5/8.
 //
 
-#include <stdexcept>
 #include <iostream>
 #include <iomanip>
 #include <hidapi.h>
+#include <libusbp.hpp>
 #include "UsbEnumerate.h"
 
 
@@ -83,7 +83,7 @@ void UsbEnumerate::refresh() {
         serialDevice.serialNumber = std::string(wsSerialNumber.begin(), wsSerialNumber.end());
         serialDevice.path = curDev->path;
         serialDevice.interfaceNumber = curDev->interface_number;
-        serialDevice.busType = curDev->bus_type;
+        serialDevice.busType = static_cast<HidBusType>(curDev->bus_type);
         std::wstring wsManufacturerString(curDev->manufacturer_string);
         serialDevice.manufacturerString = std::string(wsManufacturerString.begin(), wsManufacturerString.end());
         std::wstring wsProductString(curDev->product_string);

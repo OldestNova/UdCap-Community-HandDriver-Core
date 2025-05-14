@@ -2,8 +2,8 @@
 // Created by max_3 on 2025/5/11.
 //
 
-#include <iostream>
 #include "PortAccessor.h"
+#include <hidapi.h>
 
 PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() {
     if (!port.isHid) {

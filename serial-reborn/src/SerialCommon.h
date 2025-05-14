@@ -6,8 +6,6 @@
 #define SERIALREBORN_COMMON_H
 #include <cstdint>
 #include <string>
-#include <memory>
-#include "hidapi.h"
 
 
 #ifdef _WIN32
@@ -15,6 +13,14 @@
 #else
 #define __export
 #endif
+
+enum HidBusType {
+	HID_BUS_UNKNOWN = 0x00,
+	HID_BUS_USB = 0x01,
+	HID_BUS_BLUETOOTH = 0x02,
+	HID_BUS_I2C = 0x03,
+	HID_BUS_SPI = 0x04,
+};
 
 struct SerialDevice {
     bool isHid;
@@ -27,7 +33,7 @@ struct SerialDevice {
     std::string portName;
     bool composite;
     // HID
-    hid_bus_type busType;
+    HidBusType busType;
     std::string path;
     std::string manufacturerString;
     std::string productString;

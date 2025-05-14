@@ -7,9 +7,7 @@
 
 #include <boost/asio.hpp>
 #include <chrono>
-#include <vector>
 #include <utility>
-#include <iostream>
 
 namespace aio = boost::asio;
 

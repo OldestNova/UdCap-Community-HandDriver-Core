@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
-project(UdCapCommunityDriver)
+project(UdCapCommunityDriverCore)
+
+option(BUILD_TEST_TOOLS "Build Test Tool" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 file(
@@ -11,21 +13,31 @@ file(
 include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 
 add_subdirectory(serial-reborn)
-include_directories(serial-reborn/src)
 
 add_subdirectory(ar1_linear)
-include_directories(ar1_linear/src)
 
 file(GLOB_RECURSE SRC_FILES
-    src/*.cpp
-    src/*.h
+        src/*.cpp
+        src/*.h
+        src/*.hpp
 )
-
-add_executable(UdCapCommunityDriver ${SRC_FILES})
-target_link_libraries(UdCapCommunityDriver PRIVATE SerialReborn AR1Linear)
+include_directories(src)
+add_library(UdCapCommunityDriverCore STATIC ${SRC_FILES})
+target_link_libraries(UdCapCommunityDriverCore PUBLIC SerialReborn AR1Linear)
+target_include_directories(UdCapCommunityDriverCore PUBLIC src)
 IF (WIN32)
-    add_custom_command(TARGET UdCapCommunityDriver POST_BUILD
+    add_custom_command(TARGET UdCapCommunityDriverCore POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_BINARY_DIR}/serial-reborn/hidapi.dll"
-            $<TARGET_FILE_DIR:UdCapCommunityDriver>)
+            $<TARGET_FILE_DIR:UdCapCommunityDriverCore>)
+ENDIF ()
+
+IF (BUILD_TEST_TOOLS)
+    project(UdCapCommunityDriverCoreTest)
+    add_executable(UdCapCommunityDriverCoreTest test/main.cpp)
+    target_link_libraries(UdCapCommunityDriverCoreTest PRIVATE UdCapCommunityDriverCore)
+    add_custom_command(TARGET UdCapCommunityDriverCoreTest POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/hidapi.dll"
+            $<TARGET_FILE_DIR:UdCapCommunityDriverCoreTest>)
 ENDIF ()

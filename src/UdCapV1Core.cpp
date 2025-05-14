@@ -5,6 +5,7 @@
 #include "UdCapV1Core.h"
 #include <AR1Linear.hpp>
 #include <filesystem>
+#include <iostream>
 
 ImportAR1Linear(AR1LinearAA)
 ImportAR1Linear(AR1LinearAD)

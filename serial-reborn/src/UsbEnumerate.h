@@ -7,8 +7,6 @@
 
 #include "SerialCommon.h"
 #include <vector>
-#include <string>
-#include <libusbp.hpp>
 #include <functional>
 
 class UsbEnumerate {
