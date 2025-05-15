@@ -188,44 +188,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
     }
     if (packetBuffer[3] == (uint8_t) CommandType::CMD_LINK_STATE) {
         auto deData = decodeXOR(data);
-        short linkState = deData[0];
-        UdCapV1MCUPacket packet{};
-        packet.address = packetBuffer[2];
-        packet.commandType = CommandType::CMD_LINK_STATE;
-        if (linkState == 0) {
-            packet.linkState = LinkState::LINK_STATE_NOT_CONNECT;
-
-            if (packet.linkState != lastConnState) {
-                callListenCallback(packet);
-            }
-            lastConnState = packet.linkState;
-
-            if (initState == UD_INIT_STATE_INIT) {
-                mcuStopData();
-                initState = UD_INIT_STATE_NOT_INIT;
-            }
-        } else if (linkState == 1) {
-            packet.linkState = LinkState::LINK_STATE_CONNECTED;
-
-            if (packet.linkState != lastConnState) {
-                callListenCallback(packet);
-            }
-            lastConnState = packet.linkState;
-
-            // 自动获取序列号
-            if (initState == UD_INIT_STATE_NOT_INIT) {
-                initState = UD_INIT_STATE_INIT;
-                //                mcuGetSerialNum();
-                mcuStartData();
-            }
-        } else {
-            packet.linkState = LinkState::LINK_STATE_UNKNOWN;
-
-            if (packet.linkState != lastConnState) {
-                callListenCallback(packet);
-            }
-            lastConnState = packet.linkState;
-        }
         if (this->udCapSerial.empty()) {
             UdCapV1MCUPacket packetSerial{};
             packetSerial.address = packetBuffer[2];
@@ -242,14 +204,40 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             if (packetSerial.deviceSerialNum.find("AB") != std::string::npos) {
                 packetSerial.isEnterprise = true;
                 isEnterprise = true;
-                initState = UD_INIT_STATE_INIT;
+                udState = UD_INIT_STATE_NOT_CONNECT;
                 callListenCallback(packetSerial);
             } else if (packetSerial.deviceSerialNum.find("AC") != std::string::npos) {
                 packetSerial.isEnterprise = false;
                 isEnterprise = false;
-                initState = UD_INIT_STATE_INIT;
+                udState = UD_INIT_STATE_NOT_CONNECT;
                 callListenCallback(packetSerial);
             }
+        }
+        short linkState = deData[0];
+        UdCapV1MCUPacket packet{};
+        packet.address = packetBuffer[2];
+        packet.commandType = CommandType::CMD_LINK_STATE;
+        if (linkState == 0) {
+            packet.udState = UdState::UD_INIT_STATE_NOT_CONNECT;
+
+            if (packet.udState != udState) {
+                callListenCallback(packet);
+            }
+            if (packet.udState != UdState::UD_INIT_STATE_NOT_CONNECT) {
+                mcuStopData();
+            }
+            udState = packet.udState;
+        } else if (linkState == 1) {
+            packet.udState = UdState::UD_INIT_STATE_CONNECTED;
+
+            if (packet.udState != udState) {
+                callListenCallback(packet);
+            }
+            if (udState == UdState::UD_INIT_STATE_NOT_CONNECT) {
+                udState = packet.udState;
+                mcuStartData();
+            }
+            udState = packet.udState;
         }
     } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SET_CHANNEL_DONE) {
         UdCapV1MCUPacket packet{};
@@ -300,13 +288,9 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             packet.deviceSerialNum = std::string(deData.begin(), deData.end());
             if (packet.deviceSerialNum.find("AB") != std::string::npos) {
                 packet.isEnterprise = true;
-                isEnterprise = true;
-                initState = UD_INIT_STATE_INIT;
                 callListenCallback(packet);
             } else if (packet.deviceSerialNum.find("AC") != std::string::npos) {
                 packet.isEnterprise = false;
-                isEnterprise = false;
-                initState = UD_INIT_STATE_INIT;
                 callListenCallback(packet);
             }
         }
@@ -596,12 +580,22 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             _calibrationDataC[25] = lastAngle.f1;
             _calibrationDataC[26] = lastAngle.f2;
             _calibrationDataC[27] = lastAngle.f3;
-            UdCapV1MCUPacket dataPacket{};
-            dataPacket.address = packetBuffer[2];
-            dataPacket.commandType = CommandType::CMD_ANGLE;
-            dataPacket.result = std::vector<
-                double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
-            callListenCallback(dataPacket);
+            if (udState == UdState::UD_INIT_STATE_LINKED) {
+                UdCapV1MCUPacket dataPacket{};
+                dataPacket.address = packetBuffer[2];
+                dataPacket.commandType = CommandType::CMD_ANGLE;
+                dataPacket.result = std::vector<
+                    double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
+                callListenCallback(dataPacket);
+            }
+        }
+        if (udState == UdState::UD_INIT_STATE_CONNECTED) {
+            udState = UdState::UD_INIT_STATE_LINKED;
+            UdCapV1MCUPacket linkedPacket{};
+            linkedPacket.address = packetBuffer[2];
+            linkedPacket.commandType = CommandType::CMD_LINK_STATE;
+            linkedPacket.udState = UdState::UD_INIT_STATE_LINKED;
+            callListenCallback(linkedPacket);
         }
     }
 }
@@ -611,13 +605,13 @@ UdTarget UdCapV1Core::getTarget() const {
 }
 
 void UdCapV1Core::mcuStopData() {
-    if (initState == UD_INIT_STATE_INIT) {
+    if (udState != UD_INIT_STATE_NOT_INIT) {
         sendCommand(1, CommandType::CMD_STOP_DATA, {1});
     }
 }
 
 void UdCapV1Core::mcuStartData() {
-    if (initState == UD_INIT_STATE_INIT) {
+    if (udState == UD_INIT_STATE_CONNECTED) {
         std::vector<uint8_t> s;
         s.push_back(2);
         if (isEnterprise) {
@@ -643,21 +637,23 @@ void UdCapV1Core::mcuSendVibration(int index, float second, int strength) {
 }
 
 
-std::string UdCapV1Core::fromLinkStateToString(LinkState state) {
+std::string UdCapV1Core::fromUdStateToString(UdState state) {
     switch (state) {
-        case LINK_STATE_UNKNOWN:
-            return "Unknown";
-        case LINK_STATE_NOT_CONNECT:
-            return "Not Connected";
-        case LINK_STATE_CONNECTED:
+        case UD_INIT_STATE_NOT_INIT:
+            return "Not Init";
+        case UD_INIT_STATE_NOT_CONNECT:
+            return "Not Connect";
+        case UD_INIT_STATE_CONNECTED:
             return "Connected";
+        case UD_INIT_STATE_LINKED:
+            return "Linked";
         default:
             return "Invalid State";
     }
 }
 
 void UdCapV1Core::runCalibration(UdCapV1DeviceCaliType type) {
-    if (initState != UD_INIT_STATE_INIT) {
+    if (udState != UD_INIT_STATE_LINKED) {
         throw std::runtime_error("Core not initialized");
     }
     if (type == UdCapV1DeviceCaliType::UDCAP_V1_DEVICE_CALI_TYPE_HAND) {
@@ -682,7 +678,7 @@ void UdCapV1Core::runCalibration(UdCapV1DeviceCaliType type) {
 }
 
 void UdCapV1Core::captureCalibrationData(UdCapV1HandCaliType type) {
-    if (initState != UD_INIT_STATE_INIT) {
+    if (udState != UD_INIT_STATE_LINKED) {
         throw std::runtime_error("Core not initialized");
     }
     if (caliStat == UDCAP_V1_HAND_CALI_STAT_NONE) {
@@ -733,7 +729,7 @@ void UdCapV1Core::captureCalibrationData(UdCapV1HandCaliType type) {
 }
 
 void UdCapV1Core::clearCalibrationData(UdCapV1HandCaliType type) {
-    if (initState != UD_INIT_STATE_INIT) {
+    if (udState != UD_INIT_STATE_LINKED) {
         throw std::runtime_error("Core not initialized");
     }
     if (caliStat == UDCAP_V1_HAND_CALI_STAT_COMPLETED) {
@@ -775,7 +771,7 @@ void UdCapV1Core::clearCalibrationData(UdCapV1HandCaliType type) {
 }
 
 void UdCapV1Core::completeCalibration(UdCapV1DeviceCaliType type) {
-    if (initState != UD_INIT_STATE_INIT) {
+    if (udState != UD_INIT_STATE_LINKED) {
         throw std::runtime_error("Core not initialized");
     }
     if (type == UdCapV1DeviceCaliType::UDCAP_V1_DEVICE_CALI_TYPE_HAND) {
@@ -863,7 +859,7 @@ void UdCapV1Core::completeCalibration(UdCapV1DeviceCaliType type) {
 }
 
 void UdCapV1Core::captureJoystickData(UdCapV1JoystickCaliType type) {
-    if (initState != UD_INIT_STATE_INIT) {
+    if (udState != UD_INIT_STATE_LINKED) {
         throw std::runtime_error("Core not initialized");
     }
     if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_OK) {
@@ -887,7 +883,7 @@ void UdCapV1Core::captureJoystickData(UdCapV1JoystickCaliType type) {
 }
 
 void UdCapV1Core::clearJoystickData(UdCapV1JoystickCaliType type) {
-    if (initState != UD_INIT_STATE_INIT) {
+    if (udState != UD_INIT_STATE_LINKED) {
         throw std::runtime_error("Core not initialized");
     }
     if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_OK) {

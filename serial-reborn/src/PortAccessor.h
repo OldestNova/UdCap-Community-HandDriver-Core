@@ -12,6 +12,7 @@
 #include <functional>
 #include <thread>
 #include <hidapi.h>
+#include <queue>
 
 enum StopBit {
     STOPBIT_1,
@@ -25,6 +26,12 @@ enum Parity {
 
 enum FlowControl {
     FC_NONE, FC_SOFTWARE, FC_HARDWARE
+};
+
+struct SendDataItem {
+    bool isString;
+    std::string strData;
+    std::vector<uint8_t> byteData;
 };
 
 class PacketRealignmentHelper {
@@ -53,15 +60,17 @@ public:
     void setReadSize(size_t size);
     void setTimeout(size_t timeout);
     std::vector<uint8_t> readData();
-    size_t writeData(const std::vector<uint8_t>&);
-    size_t writeData(const std::string&);
+    void writeData(const std::vector<uint8_t>&);
+    void writeData(const std::string&);
 
     void setPacketRealignmentHelper(std::unique_ptr<PacketRealignmentHelper> helper);
     bool hasPacketRealignmentHelper() const;
     std::function<void()> addDataCallback(const std::function<void(const std::vector<uint8_t> &)> &);
     void startContinuousRead();
     void stopContinuousRead();
+    void setWriteDelay(const uint64_t delay);
 private:
+    void writeDataToDevice(const boost::asio::const_buffer &buffer);
     SerialDevice serialDevice;
     boost::asio::io_context io;
     std::unique_ptr<DeadlineSocket<boost::asio::serial_port>> serialPort;
@@ -75,6 +84,20 @@ private:
     std::atomic_int32_t continuousReadStartCount = 0;
     std::unique_ptr<PacketRealignmentHelper> packetRealignmentHelper;
     std::vector<std::function<void(const std::vector<uint8_t> &)>> dataCallbacks;
+
+    // EventLoop
+    std::atomic_bool eventLoopRunning = true;
+    // RX EventLoop
+    std::thread rxEventThread;
+    std::queue<std::vector<uint8_t>> rxQueue;
+    std::mutex rxQueueMutex;
+    std::condition_variable rxQueueCondition;
+    // TX EventLoop
+    std::atomic_uint16_t txEventLoopSendDelay = 0;
+    std::thread txEventThread;
+    std::queue<SendDataItem> txQueue;
+    std::mutex txQueueMutex;
+    std::condition_variable txQueueCondition;
 };
 
 

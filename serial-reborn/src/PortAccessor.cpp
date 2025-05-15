@@ -9,9 +9,58 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
     if (!port.isHid) {
         serialPort = std::make_unique<DeadlineSocket<boost::asio::serial_port>>(io);
     }
+    std::thread rxThread([this]() {
+        while (eventLoopRunning.load()) {
+            if (rxQueue.empty()) {
+                std::unique_lock lk(rxQueueMutex);
+                rxQueueCondition.wait_for(lk, std::chrono::milliseconds(100));
+                continue;
+            }
+            try {
+                std::vector<uint8_t> packet = rxQueue.front();
+                rxQueue.pop();
+                std::lock_guard guard(callbackMutex);
+                for (auto &callback : this->dataCallbacks) {
+                    callback(packet);
+                }
+            } catch (std::exception &e) {
+
+            }
+        }
+    });
+    rxThread.detach();
+    rxEventThread = std::move(rxThread);
+
+    std::thread txThread([this]() {
+        while (eventLoopRunning.load()) {
+            if (txQueue.empty()) {
+                std::unique_lock lk(txQueueMutex);
+                txQueueCondition.wait_for(lk, std::chrono::milliseconds(100));
+                continue;
+            }
+            try {
+                SendDataItem packet = txQueue.front();
+                txQueue.pop();
+                uint16_t delay = txEventLoopSendDelay.load();
+                if (delay > 0) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+                }
+                if (packet.isString) {
+                    writeDataToDevice(boost::asio::buffer((packet.strData)));
+                } else {
+                    writeDataToDevice(boost::asio::buffer((packet.byteData)));
+                }
+            } catch (std::exception &e) {
+
+            }
+        }
+    });
+    txThread.detach();
+    txEventThread = std::move(txThread);
 }
 
 PortAccessor::~PortAccessor() {
+    eventLoopRunning.store(false);
     closePort();
 }
 
@@ -176,29 +225,40 @@ std::vector<uint8_t> PortAccessor::readData() {
     }
 }
 
-size_t PortAccessor::writeData(const std::vector<uint8_t> &data) {
+void PortAccessor::writeData(const std::vector<uint8_t> &data) {
     if (isOpen()) {
-        if (serialDevice.isHid) {
-            return hid_write(hidDevice, data.data(), (size_t)data.size());
-        } else {
-            return serialPort->write(boost::asio::buffer(data), std::chrono::milliseconds(this->timeout));
-        }
+        SendDataItem item;
+        item.isString = false;
+        item.byteData = data;
+        txQueue.push(item);
+        txQueueCondition.notify_all();
     } else {
         throw std::runtime_error("Port is not open");
     }
 }
 
-size_t PortAccessor::writeData(const std::string &data) {
+void PortAccessor::writeData(const std::string &data) {
     if (isOpen()) {
-        if (serialDevice.isHid) {
-            return hid_write(hidDevice, reinterpret_cast<const unsigned char *>(data.c_str()), (size_t)data.size());
-        } else {
-            return serialPort->write(boost::asio::buffer(data), std::chrono::milliseconds(this->timeout));
-        }
+        SendDataItem item;
+        item.isString = true;
+        item.strData = data;
+        txQueue.push(item);
+        txQueueCondition.notify_all();
     } else {
         throw std::runtime_error("Port is not open");
     }
 }
+
+void PortAccessor::writeDataToDevice(const boost::asio::const_buffer &buffer) {
+    if (isOpen()) {
+        if (serialDevice.isHid) {
+            hid_write(hidDevice, static_cast<const unsigned char *>(buffer.data()), buffer.size());
+        } else {
+            serialPort->write(buffer, std::chrono::milliseconds(this->timeout));
+        }
+    }
+}
+
 
 void PortAccessor::stopContinuousRead() {
     if (isOpen()) {
@@ -257,17 +317,13 @@ void PortAccessor::startContinuousRead() {
                             if (packet.empty()) {
                                 continue;
                             }
-                            std::lock_guard guard(callbackMutex);
-                            for (auto &callback : this->dataCallbacks) {
-                                callback(packet);
-                            }
+                            rxQueue.push(packet);
+                            rxQueueCondition.notify_all();
                         }
                     }
                 } else {
-                    for (auto &callback : this->dataCallbacks) {
-                        std::lock_guard guard(callbackMutex);
-                        callback(data);
-                    }
+                    rxQueue.push(data);
+                    rxQueueCondition.notify_all();
                 }
             }
         });
@@ -295,4 +351,8 @@ std::shared_ptr<PortAccessor> PortAccessor::create(const SerialDevice &port) {
 
 bool PortAccessor::hasPacketRealignmentHelper() const {
     return packetRealignmentHelper != nullptr;
+}
+
+void PortAccessor::setWriteDelay(const uint64_t delay) {
+    txEventLoopSendDelay.store(delay);
 }
