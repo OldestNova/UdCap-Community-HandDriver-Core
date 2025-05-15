@@ -66,7 +66,7 @@ enum UdTarget {
 };
 
 enum UdState {
-    UD_INIT_STATE_NOT_INIT = 0,
+    UD_INIT_STATE_INIT = 0,
     UD_INIT_STATE_NOT_CONNECT = 1,
     UD_INIT_STATE_CONNECTED = 2,
     UD_INIT_STATE_LINKED = 3
@@ -275,7 +275,7 @@ private:
     std::mutex callbackMutex;
     uint16_t lastBattery = 0;
     bool isEnterprise = false;
-    UdState udState = UD_INIT_STATE_NOT_INIT;
+    UdState udState = UD_INIT_STATE_INIT;
     UdCapV1HandCaliStat caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
     UdCapV1HandCaliFist caliFist;
     UdCapV1HandCaliAdduction caliAdduction;

@@ -204,12 +204,10 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             if (packetSerial.deviceSerialNum.find("AB") != std::string::npos) {
                 packetSerial.isEnterprise = true;
                 isEnterprise = true;
-                udState = UD_INIT_STATE_NOT_CONNECT;
                 callListenCallback(packetSerial);
             } else if (packetSerial.deviceSerialNum.find("AC") != std::string::npos) {
                 packetSerial.isEnterprise = false;
                 isEnterprise = false;
-                udState = UD_INIT_STATE_NOT_CONNECT;
                 callListenCallback(packetSerial);
             }
         }
@@ -223,7 +221,8 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             if (packet.udState != udState) {
                 callListenCallback(packet);
             }
-            if (packet.udState != UdState::UD_INIT_STATE_NOT_CONNECT) {
+            if (udState != UdState::UD_INIT_STATE_NOT_CONNECT && udState != UdState::UD_INIT_STATE_INIT) {
+                udState = packet.udState;
                 mcuStopData();
             }
             udState = packet.udState;
@@ -233,7 +232,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             if (packet.udState != udState) {
                 callListenCallback(packet);
             }
-            if (udState == UdState::UD_INIT_STATE_NOT_CONNECT) {
+            if (udState == UdState::UD_INIT_STATE_NOT_CONNECT || udState == UdState::UD_INIT_STATE_INIT) {
                 udState = packet.udState;
                 mcuStartData();
             }
@@ -605,7 +604,7 @@ UdTarget UdCapV1Core::getTarget() const {
 }
 
 void UdCapV1Core::mcuStopData() {
-    if (udState != UD_INIT_STATE_NOT_INIT) {
+    if (udState != UD_INIT_STATE_INIT) {
         sendCommand(1, CommandType::CMD_STOP_DATA, {1});
     }
 }
@@ -639,8 +638,8 @@ void UdCapV1Core::mcuSendVibration(int index, float second, int strength) {
 
 std::string UdCapV1Core::fromUdStateToString(UdState state) {
     switch (state) {
-        case UD_INIT_STATE_NOT_INIT:
-            return "Not Init";
+        case UD_INIT_STATE_INIT:
+            return "Init";
         case UD_INIT_STATE_NOT_CONNECT:
             return "Not Connect";
         case UD_INIT_STATE_CONNECTED:
