@@ -36,8 +36,10 @@ IF (BUILD_TEST_TOOLS)
     project(UdCapCommunityDriverCoreTest)
     add_executable(UdCapCommunityDriverCoreTest test/main.cpp)
     target_link_libraries(UdCapCommunityDriverCoreTest PRIVATE UdCapCommunityDriverCore)
+IF (WIN32)
     add_custom_command(TARGET UdCapCommunityDriverCoreTest POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_BINARY_DIR}/hidapi.dll"
             $<TARGET_FILE_DIR:UdCapCommunityDriverCoreTest>)
+ENDIF ()
 ENDIF ()
