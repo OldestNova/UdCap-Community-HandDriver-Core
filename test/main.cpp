@@ -49,7 +49,8 @@ int main() {
 #endif
     UsbEnumerate usbEnum;
     try {
-        usbEnum.refresh();
+        usbEnum.refresh(USB_ENUMERATE_REFRESH_SERIAL);
+        usbEnum.printDevices();
         std::vector<SerialDevice> devices = usbEnum.findPorts([](const SerialDevice &device) {
             return device.vid == 0x1A86 && (device.pid == 0x7523 || device.pid == 0x0001);
         });

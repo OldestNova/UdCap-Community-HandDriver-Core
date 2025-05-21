@@ -9,11 +9,17 @@
 #include <vector>
 #include <functional>
 
+enum UsbEnumerateRefreshType {
+    USB_ENUMERATE_REFRESH_ALL = 0,
+    USB_ENUMERATE_REFRESH_SERIAL = 1,
+    USB_ENUMERATE_REFRESH_HID = 2
+};
+
 class UsbEnumerate {
 public:
     UsbEnumerate();
     ~UsbEnumerate();
-    void refresh();
+    void refresh(UsbEnumerateRefreshType type);
     void printDevices();
     std::vector<SerialDevice> findPorts(std::function<bool(const SerialDevice&)>);
 private:
