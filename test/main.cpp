@@ -51,7 +51,7 @@ int main() {
     try {
         usbEnum.refresh();
         std::vector<SerialDevice> devices = usbEnum.findPorts([](const SerialDevice &device) {
-            return device.vid == 0x1A86 && device.pid == 0x7523;
+            return device.vid == 0x1A86 && (device.pid == 0x7523 || device.pid == 0x0001);
         });
         for (const auto &device: devices) {
             std::cout << "Found device: " << device.portName << std::endl;

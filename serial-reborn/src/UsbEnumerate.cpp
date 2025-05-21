@@ -30,7 +30,11 @@ void UsbEnumerate::refresh() {
             try {
                 SerialDevice serialDevice {};
                 serialDevice.isHid = false;
+#if WIN32
                 serialDevice.serialNumber = device.get_serial_number();
+#else
+                serialDevice.serialNumber = "";
+#endif
                 serialDevice.vid = vendorId;
                 serialDevice.pid = productId;
                 std::string port_name;

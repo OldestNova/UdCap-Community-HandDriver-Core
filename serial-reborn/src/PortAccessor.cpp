@@ -68,7 +68,11 @@ void PortAccessor::openPort() {
     if (isOpen()) return;
     if (serialDevice.isHid) {
         std::wstring wideSerialNumber = std::wstring(serialDevice.serialNumber.begin(), serialDevice.serialNumber.end());
-        hidDevice = hid_open(serialDevice.vid, serialDevice.pid, wideSerialNumber.c_str());
+        if (wideSerialNumber.empty()) {
+            hidDevice = hid_open(serialDevice.vid, serialDevice.pid, nullptr);
+        } else {
+            hidDevice = hid_open(serialDevice.vid, serialDevice.pid, wideSerialNumber.c_str());
+        }
         if (!hidDevice) {
             throw std::runtime_error("Failed to open HID device");
         }
