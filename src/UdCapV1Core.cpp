@@ -867,7 +867,7 @@ void UdCapV1Core::captureJoystickData(UdCapV1JoystickCaliType type) {
         throw std::runtime_error("Not in calibration mode");
     }
     if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER) {
-        if (type == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER) {
+        if (type == UdCapV1JoystickCaliType::UDCAP_V1_JOYSTICK_CALI_TYPE_CENTER) {
             xCenterData = lastAngle.f16;
             yCenterData = lastAngle.f17;
             joystickCaliStat = UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE;
@@ -875,7 +875,7 @@ void UdCapV1Core::captureJoystickData(UdCapV1JoystickCaliType type) {
             throw std::runtime_error("Error on calibrate type with ZONE, now calibrating CENTER");
         }
     } else if (joystickCaliStat == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE) {
-        if (type == UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_CENTER) {
+        if (type == UdCapV1JoystickCaliType::UDCAP_V1_JOYSTICK_CALI_TYPE_ZONE) {
             std::cout << "Joystick zone calibration is running on data callback automatically." << std::endl;
         } else {
             throw std::runtime_error("Error on calibrate type with CENTER, now calibrating ZONE");
