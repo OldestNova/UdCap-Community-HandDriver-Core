@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 project(UdCapCommunityDriverCore)
 
 option(BUILD_TEST_TOOLS "Build Test Tool" OFF)
+option(TEST_TOOLS_PRINT_RAW "Print raw data on test tool" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 file(
@@ -34,6 +35,9 @@ ENDIF ()
 
 IF (BUILD_TEST_TOOLS)
     project(UdCapCommunityDriverCoreTest)
+    IF (TEST_TOOLS_PRINT_RAW)
+        add_compile_definitions(TEST_TOOLS_PRINT_RAW)
+    ENDIF ()
     add_executable(UdCapCommunityDriverCoreTest test/main.cpp)
     target_link_libraries(UdCapCommunityDriverCoreTest PRIVATE UdCapCommunityDriverCore)
 IF (WIN32)

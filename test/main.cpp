@@ -58,7 +58,9 @@ int main() {
         for (const auto &device: devices) {
             std::cout << "Found device: " << device.portName << std::endl;
             std::shared_ptr<PortAccessor> portAccessor = std::make_shared<PortAccessor>(device);
+#ifdef TEST_TOOLS_PRINT_RAW
             portAccessor->setPrintRxTxToStdOut(true);
+#endif
             UdCapProbe prober(portAccessor);
             switch (prober.probe()) {
                 case UDCAP_PROBE_FAILURE: {
