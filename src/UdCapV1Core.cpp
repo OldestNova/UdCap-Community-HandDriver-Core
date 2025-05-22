@@ -583,8 +583,10 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                             powerBtnPressed = false;
                         }
                     } else {
-                        powerButtonTimeout = std::chrono::system_clock::now();
-                        powerBtnPressed = true;
+                        if (isPower) {
+                            powerButtonTimeout = std::chrono::system_clock::now();
+                            powerBtnPressed = true;
+                        }
                     }
                     callListenCallback(packetInputBtn);
                 }
