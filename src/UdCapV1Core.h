@@ -102,7 +102,7 @@ private:
     std::vector<uint8_t> packetBuffer;
     std::vector<std::vector<uint8_t> > processedPacket;
     uint32_t remainedLength = 0;
-    UdCapV1StateMachine stateMachine = NOOP;
+    volatile UdCapV1StateMachine stateMachine = NOOP;
 };
 
 
@@ -270,18 +270,18 @@ private:
     std::function<void()> unlistenPortCallback;
     std::shared_ptr<PortAccessor> portAccessor;
     std::string udCapSerial;
-    UdTarget target = UD_TARGET_UNKNOWN;
+    volatile UdTarget target = UD_TARGET_UNKNOWN;
     std::map<uint32_t, std::function<void(const UdCapV1MCUPacket &)> > listenCallbacks;
     std::mutex callbackMutex;
     uint16_t lastBattery = 0;
     bool isEnterprise = false;
-    UdState udState = UD_INIT_STATE_INIT;
-    UdCapV1HandCaliStat caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
+    volatile UdState udState = UD_INIT_STATE_INIT;
+    volatile UdCapV1HandCaliStat caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
     UdCapV1HandCaliFist caliFist;
     UdCapV1HandCaliAdduction caliAdduction;
     UdCapV1HandCaliProtract caliProtract;
     UdCapV1HandData lastAngle{};
-    UdCapV1JoystickCaliStat joystickCaliStat = UDCAP_V1_JOYSTICK_CALI_STAT_OK;
+    volatile UdCapV1JoystickCaliStat joystickCaliStat = UDCAP_V1_JOYSTICK_CALI_STAT_OK;
     float xCenterData = 1850.0;
     float yCenterData = 1850.0;
     float xMaxData = 3750.0;
