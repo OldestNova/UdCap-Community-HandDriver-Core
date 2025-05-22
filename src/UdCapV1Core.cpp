@@ -150,7 +150,6 @@ std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1
     uint32_t fd = callbackFd.fetch_add(1);
     listenCallbacks[fd] = callback;
     return [this, fd]() {
-        // Remove the callback from the list
         listenCallbacks.erase(fd);
     };
 }

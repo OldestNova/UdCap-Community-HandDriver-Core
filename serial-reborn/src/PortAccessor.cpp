@@ -7,9 +7,9 @@
 #include <iomanip>
 #include <iostream>
 
-PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() {
+PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
     if (!port.isHid) {
-        serialPort = std::make_unique<DeadlineSocket<boost::asio::serial_port>>(io);
+        serialPort = std::make_unique<DeadlineSocket<boost::asio::serial_port> >(io);
     }
     std::thread rxThread([this]() {
         while (eventLoopRunning.load()) {
@@ -25,12 +25,12 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
                 std::lock_guard guard(callbackMutex);
                 if (item.isOnceRaw) {
                     std::vector<uint32_t> removable;
-                    for (auto &pair : this->onceRawDataCallbacks) {
+                    for (auto &pair: this->onceRawDataCallbacks) {
                         if (pair.second(packet)) {
                             removable.push_back(pair.first);
                         }
                     }
-                    for (auto &fd : removable) {
+                    for (auto &fd: removable) {
                         this->onceRawDataCallbacks.erase(fd);
                     }
                 } else {
@@ -41,12 +41,11 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
                         }
                         std::cout << std::endl;
                     }
-                    for (auto &pair : this->dataCallbacks) {
+                    for (auto &pair: this->dataCallbacks) {
                         pair.second(packet);
                     }
                 }
             } catch (std::exception &e) {
-
             }
         }
     });
@@ -85,7 +84,6 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
                     writeDataToDevice(boost::asio::buffer((packet.byteData)));
                 }
             } catch (std::exception &e) {
-
             }
         }
     });
@@ -107,7 +105,8 @@ PortAccessor::~PortAccessor() {
 void PortAccessor::openPort() {
     if (isOpen()) return;
     if (serialDevice.isHid) {
-        std::wstring wideSerialNumber = std::wstring(serialDevice.serialNumber.begin(), serialDevice.serialNumber.end());
+        std::wstring wideSerialNumber =
+                std::wstring(serialDevice.serialNumber.begin(), serialDevice.serialNumber.end());
         if (wideSerialNumber.empty()) {
             hidDevice = hid_open(serialDevice.vid, serialDevice.pid, nullptr);
         } else {
@@ -162,13 +161,16 @@ void PortAccessor::setStopBit(StopBit stopBit) {
     } else {
         switch (stopBit) {
             case StopBit::STOPBIT_1:
-                serialPort->socket().set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
                 break;
             case StopBit::STOPBIT_2:
-                serialPort->socket().set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::two));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::two));
                 break;
             case StopBit::STOPBIT_1_5:
-                serialPort->socket().set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::onepointfive));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::onepointfive));
                 break;
             default:
                 throw std::runtime_error("Invalid stop bit value");
@@ -182,13 +184,16 @@ void PortAccessor::setParity(Parity parity) {
     } else {
         switch (parity) {
             case P_NONE:
-                serialPort->socket().set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
                 break;
             case P_EVEN:
-                serialPort->socket().set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::even));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::even));
                 break;
             case P_ODD:
-                serialPort->socket().set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::odd));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::odd));
                 break;
             default:
                 throw std::runtime_error("Invalid parity value");
@@ -202,13 +207,16 @@ void PortAccessor::setFlowControl(FlowControl flowControl) {
     } else {
         switch (flowControl) {
             case FC_NONE:
-                serialPort->socket().set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
                 break;
             case FC_HARDWARE:
-                serialPort->socket().set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
                 break;
             case FC_SOFTWARE:
-                serialPort->socket().set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::software));
+                serialPort->socket().set_option(
+                    boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::software));
                 break;
             default:
                 throw std::runtime_error("Invalid flow control value");
@@ -228,7 +236,7 @@ void PortAccessor::setDataBits(int dataBits) {
 }
 
 void PortAccessor::setReadSize(size_t size) {
-     readSize = size;
+    readSize = size;
 }
 
 void PortAccessor::setTimeout(size_t timeout) {
@@ -242,13 +250,14 @@ std::vector<uint8_t> PortAccessor::readData() {
         }
         std::vector<uint8_t> buffer(readSize);
         if (serialDevice.isHid) {
-            size_t transfered = hid_read_timeout(hidDevice, buffer.data(), buffer.size(), (int)timeout);
+            size_t transfered = hid_read_timeout(hidDevice, buffer.data(), buffer.size(), (int) timeout);
             buffer.resize(transfered);
         } else {
             uint8_t read = 4;
             while (read > 0) {
                 try {
-                    size_t transfered = serialPort->read(boost::asio::buffer(buffer), std::chrono::milliseconds(this->timeout));
+                    size_t transfered = serialPort->read(boost::asio::buffer(buffer),
+                                                         std::chrono::milliseconds(this->timeout));
                     if (transfered == 0) {
                         read = read - 1;
                         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -261,7 +270,6 @@ std::vector<uint8_t> PortAccessor::readData() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
             }
-
         }
         if (printRxTxToStdOut) {
             std::cout << "Receive: ";
@@ -322,7 +330,7 @@ void PortAccessor::stopContinuousRead() {
         if (continuousReadThread.joinable()) {
             continuousReadThread.join();
         }
-
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     } else {
         throw std::runtime_error("Port is not open");
     }
@@ -347,54 +355,54 @@ void PortAccessor::startContinuousRead() {
             while (continuousReadRunning.load()) {
                 try {
                     std::vector<uint8_t> data(this->readSize);
-                try {
-                    if (serialDevice.isHid) {
-                        size_t size = hid_read_timeout(hidDevice, data.data(), this->readSize, (int)this->timeout);
-                        data.resize(size);
-                    } else {
-                        size_t size = this->serialPort->read(boost::asio::buffer(data), std::chrono::milliseconds(this->timeout));
-                        data.resize(size);
-                    }
-                } catch (const boost::system::system_error &e) {
-                    continue;
-                }
-                if (data.empty()) {
-                    continue;
-                }
-
-                if (!onceRawDataCallbacks.empty()) {
-                    ReceiveDataItem item {};
-                    item.isOnceRaw = true;
-                    item.byteData = data;
-                    rxQueue.push(item);
-                    rxQueueCondition.notify_all();
-                }
-
-                if (packetRealignmentHelper) {
-                    std::vector<std::vector<uint8_t>> newPacket = packetRealignmentHelper->processPacket(data);
-                    if (newPacket.empty()) {
-                        continue;
-                    } else {
-                        for (const std::vector<uint8_t>& packet: newPacket) {
-                            if (packet.empty()) {
-                                continue;
-                            }
-                            ReceiveDataItem item {};
-                            item.isOnceRaw = false;
-                            item.byteData = packet;
-                            rxQueue.push(item);
-                            rxQueueCondition.notify_all();
+                    try {
+                        if (serialDevice.isHid) {
+                            size_t size = hid_read_timeout(hidDevice, data.data(), this->readSize, (int) this->timeout);
+                            data.resize(size);
+                        } else {
+                            size_t size = this->serialPort->read(boost::asio::buffer(data),
+                                                                 std::chrono::milliseconds(this->timeout));
+                            data.resize(size);
                         }
+                    } catch (const boost::system::system_error &e) {
+                        continue;
                     }
-                } else {
-                    ReceiveDataItem item {};
-                    item.isOnceRaw = false;
-                    item.byteData = data;
-                    rxQueue.push(item);
-                    rxQueueCondition.notify_all();
-                }
-                } catch (std::exception &e) {
+                    if (data.empty()) {
+                        continue;
+                    }
 
+                    if (!onceRawDataCallbacks.empty()) {
+                        ReceiveDataItem item{};
+                        item.isOnceRaw = true;
+                        item.byteData = data;
+                        rxQueue.push(item);
+                        rxQueueCondition.notify_all();
+                    }
+
+                    if (packetRealignmentHelper) {
+                        std::vector<std::vector<uint8_t> > newPacket = packetRealignmentHelper->processPacket(data);
+                        if (newPacket.empty()) {
+                            continue;
+                        } else {
+                            for (const std::vector<uint8_t> &packet: newPacket) {
+                                if (packet.empty()) {
+                                    continue;
+                                }
+                                ReceiveDataItem item{};
+                                item.isOnceRaw = false;
+                                item.byteData = packet;
+                                rxQueue.push(item);
+                                rxQueueCondition.notify_all();
+                            }
+                        }
+                    } else {
+                        ReceiveDataItem item{};
+                        item.isOnceRaw = false;
+                        item.byteData = data;
+                        rxQueue.push(item);
+                        rxQueueCondition.notify_all();
+                    }
+                } catch (std::exception &e) {
                 }
             }
         });
@@ -403,7 +411,7 @@ void PortAccessor::startContinuousRead() {
     }
 }
 
-std::function<void()> PortAccessor::addDataCallback(const std::function<void(const std::vector<uint8_t> &)>& callback) {
+std::function<void()> PortAccessor::addDataCallback(const std::function<void(const std::vector<uint8_t> &)> &callback) {
     std::lock_guard guard(callbackMutex);
     uint32_t fd = callbackFd.fetch_add(1);
     dataCallbacks[fd] = callback;
@@ -412,7 +420,8 @@ std::function<void()> PortAccessor::addDataCallback(const std::function<void(con
     };
 }
 
-std::function<void()> PortAccessor::addOnceRawDataCallback(const std::function<bool(const std::vector<uint8_t> &)> & callback) {
+std::function<void()> PortAccessor::addOnceRawDataCallback(
+    const std::function<bool(const std::vector<uint8_t> &)> &callback) {
     std::lock_guard guard(callbackMutex);
     uint32_t fd = callbackFd.fetch_add(1);
     onceRawDataCallbacks[fd] = callback;
