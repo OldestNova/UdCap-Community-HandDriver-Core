@@ -126,6 +126,7 @@ void PortAccessor::openPort() {
         }
     }
     isOpenFlag = true;
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
 }
 
 bool PortAccessor::isOpen() const {
