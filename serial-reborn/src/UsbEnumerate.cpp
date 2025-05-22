@@ -41,7 +41,7 @@ void UsbEnumerate::refresh(UsbEnumerateRefreshType type) {
                             libusbp::serial_port port(device, i, true);
                             std::string port_name = port.get_name();
                             SerialDevice compSerialDevice {};
-                            memcpy_s(&compSerialDevice, sizeof(SerialDevice), &serialDevice, sizeof(SerialDevice));
+                            memcpy(&compSerialDevice, &serialDevice, sizeof(SerialDevice));
                             compSerialDevice.interfaceNumber = i;
                             compSerialDevice.composite = true;
                             compSerialDevice.portName = port_name;
@@ -103,7 +103,7 @@ void UsbEnumerate::refresh(UsbEnumerateRefreshType type) {
 }
 
 void UsbEnumerate::printDevices() {
-    std::cout << "IsHID\tVID\t\tPID\t\t\tComposite\tSerial Number\tPort Name" << std::endl;
+    std::cout << "IsHID\tVID\tPID\t\tComposite\tSerial Number\tPort Name" << std::endl;
     for (const auto &device: devices) {
         std::string comp = "";
         if (device.composite) {
@@ -111,7 +111,7 @@ void UsbEnumerate::printDevices() {
         } else {
             comp = "NO";
         }
-        std::cout << device.isHid << "\t\t"
+        std::cout << device.isHid << "\t"
                 << std::hex << std::setw(4) << std::setfill('0') << device.vid << "\t"
                 << std::hex << std::setw(4) << std::setfill('0') << device.pid << "\t\t"
                 << comp << "\t\t\t"
