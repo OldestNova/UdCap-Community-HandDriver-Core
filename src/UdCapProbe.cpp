@@ -17,7 +17,7 @@ UdCapProbeType UdCapProbe::probe() {
         this->udCapSerial = "";
         portAccessor->openPort();
         portAccessor->setBaudRate(115200);
-        portAccessor->setReadSize(32);
+        portAccessor->setReadSize(8);
         std::mutex mutex;
         std::condition_variable condition;
         std::string uds = "";
