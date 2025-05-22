@@ -353,50 +353,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             hasController = true;
         }
 
-        if (joystickCaliStat == UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE) {
-            if (lastAngle.f16 > 600.0) {
-                xMinData = std::min(xMinData, lastAngle.f16);
-            }
-            if (lastAngle.f16 < 3800.0) {
-                xMaxData = std::max(xMaxData, lastAngle.f16);
-            }
-            if (lastAngle.f17 > 600.0) {
-                yMinData = std::min(yMinData, lastAngle.f17);
-            }
-            if (lastAngle.f17 < 3800.0) {
-                yMaxData = std::max(yMaxData, lastAngle.f17);
-            }
-        } else if (joystickCaliStat == UDCAP_V1_JOYSTICK_CALI_STAT_OK) {
-            float num = (lastAngle.f16 - xCenterData) / ((xMaxData - xMinData) / 2.0);
-            float num2 = (lastAngle.f17 - yCenterData) / ((yMaxData - yMinData) / 2.0);
-            if (num > 1.0) {
-                num = 1.0;
-            }
-            if (num < -1.0) {
-                num = -1.0;
-            }
-            if (num2 > 1.0) {
-                num2 = 1.0;
-            }
-            if (num2 < -1.0) {
-                num2 = -1.0;
-            }
-            if (num <= deadZone && num > 0.0 - deadZone && num2 <= deadZone && num2 > 0.0 - deadZone) {
-                num = 0.0;
-                num2 = 0.0;
-            }
-            UdCapV1MCUPacket joyStickPacket{};
-            joyStickPacket.address = packetBuffer[2];
-            joyStickPacket.commandType = CommandType::CMD_INPUT_JOYSTICK;
-            joyStickPacket.joystickData.joyX = num;
-            joyStickPacket.joystickData.joyY = num2;
-            if (!hasController) {
-                joyStickPacket.joystickData.joyX = 0.0;
-                joyStickPacket.joystickData.joyY = 0.0;
-            }
-            callListenCallback(joyStickPacket);
-        }
-
         if (caliStat == UDCAP_V1_HAND_CALI_STAT_COMPLETED) {
             double f[12]{
                 lastAngle.f4,
@@ -548,11 +504,90 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             _calibrationDataC[26] = lastAngle.f2;
             _calibrationDataC[27] = lastAngle.f3;
             if (udState == UdState::UD_INIT_STATE_LINKED) {
-                UdCapV1MCUPacket dataPacket{};
-                dataPacket.address = packetBuffer[2];
-                dataPacket.commandType = CommandType::CMD_ANGLE;
-                dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
-                callListenCallback(dataPacket);
+                {
+                    UdCapV1MCUPacket dataPacket{};
+                    dataPacket.address = packetBuffer[2];
+                    dataPacket.commandType = CommandType::CMD_ANGLE;
+                    dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
+                    callListenCallback(dataPacket);
+                }
+                {
+                    if (joystickCaliStat == UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE) {
+                        if (lastAngle.f16 > 600.0) {
+                            xMinData = std::min(xMinData, lastAngle.f16);
+                        }
+                        if (lastAngle.f16 < 3800.0) {
+                            xMaxData = std::max(xMaxData, lastAngle.f16);
+                        }
+                        if (lastAngle.f17 > 600.0) {
+                            yMinData = std::min(yMinData, lastAngle.f17);
+                        }
+                        if (lastAngle.f17 < 3800.0) {
+                            yMaxData = std::max(yMaxData, lastAngle.f17);
+                        }
+                    } else if (joystickCaliStat == UDCAP_V1_JOYSTICK_CALI_STAT_OK) {
+                        float num = (lastAngle.f16 - xCenterData) / ((xMaxData - xMinData) / 2.0);
+                        float num2 = (lastAngle.f17 - yCenterData) / ((yMaxData - yMinData) / 2.0);
+                        if (num > 1.0) {
+                            num = 1.0;
+                        }
+                        if (num < -1.0) {
+                            num = -1.0;
+                        }
+                        if (num2 > 1.0) {
+                            num2 = 1.0;
+                        }
+                        if (num2 < -1.0) {
+                            num2 = -1.0;
+                        }
+                        if (num <= deadZone && num > 0.0 - deadZone && num2 <= deadZone && num2 > 0.0 - deadZone) {
+                            num = 0.0;
+                            num2 = 0.0;
+                        }
+                        UdCapV1MCUPacket joyStickPacket{};
+                        joyStickPacket.address = packetBuffer[2];
+                        joyStickPacket.commandType = CommandType::CMD_INPUT_JOYSTICK;
+                        joyStickPacket.joystickData.joyX = num;
+                        joyStickPacket.joystickData.joyY = num2;
+                        if (!hasController) {
+                            joyStickPacket.joystickData.joyX = 0.0;
+                            joyStickPacket.joystickData.joyY = 0.0;
+                        }
+                        callListenCallback(joyStickPacket);
+                    }
+                }
+                {
+                    UdCapV1MCUPacket packetInputBtn{};
+                    packetInputBtn.address = packetBuffer[2];
+                    packetInputBtn.commandType = CommandType::CMD_INPUT_BUTTON;
+                    uint16_t num3 = static_cast<uint16_t>(lastAngle.f18);
+                    constexpr uint16_t A_BIT     = 0x0001; // 0000 0000 0000 0001
+                    constexpr uint16_t B_BIT     = 0x0002; // 0000 0000 0000 0010
+                    constexpr uint16_t JOY_BIT   = 0x0004; // 0000 0000 0000 0100
+                    constexpr uint16_t POWER_BIT = 0x0008; // 0000 0000 0000 1000
+                    packetInputBtn.button.btnA = num3 & A_BIT;
+                    packetInputBtn.button.btnB = num3 & B_BIT;
+                    if (packetInputBtn.button.btnA && packetInputBtn.button.btnB) {
+                        packetInputBtn.button.btnMenu = true;
+                        packetInputBtn.button.btnA = false;
+                        packetInputBtn.button.btnB = false;
+                    }
+                    packetInputBtn.button.btnJoyStick = num3 & JOY_BIT;
+                    bool isPower = num3 & POWER_BIT;
+                    if (powerBtnPressed) {
+                        if (!isPower) {
+                            std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - powerButtonTimeout);
+                            if (ms.count() <= 1500) {
+                                packetInputBtn.button.btnPower = true;
+                            }
+                            powerBtnPressed = false;
+                        }
+                    } else {
+                        powerButtonTimeout = std::chrono::system_clock::now();
+                        powerBtnPressed = true;
+                    }
+                    callListenCallback(packetInputBtn);
+                }
             }
         }
         if (udState == UdState::UD_INIT_STATE_CONNECTED) {
@@ -562,38 +597,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             linkedPacket.commandType = CommandType::CMD_LINK_STATE;
             linkedPacket.udState = UdState::UD_INIT_STATE_LINKED;
             callListenCallback(linkedPacket);
-        }
-        if (udState == UdState::UD_INIT_STATE_LINKED) {
-            UdCapV1MCUPacket packetInputBtn{};
-            packetInputBtn.address = packetBuffer[2];
-            packetInputBtn.commandType = CommandType::CMD_INPUT_BUTTON;
-            uint16_t num3 = static_cast<uint16_t>(lastAngle.f18);
-            constexpr uint16_t A_BIT     = 0x0001; // 0000 0000 0000 0001
-            constexpr uint16_t B_BIT     = 0x0002; // 0000 0000 0000 0010
-            constexpr uint16_t JOY_BIT   = 0x0004; // 0000 0000 0000 0100
-            constexpr uint16_t POWER_BIT = 0x0008; // 0000 0000 0000 1000
-            packetInputBtn.button.btnA = num3 & A_BIT;
-            packetInputBtn.button.btnB = num3 & B_BIT;
-            if (packetInputBtn.button.btnA && packetInputBtn.button.btnB) {
-                packetInputBtn.button.btnMenu = true;
-                packetInputBtn.button.btnA = false;
-                packetInputBtn.button.btnB = false;
-            }
-            packetInputBtn.button.btnJoyStick = num3 & JOY_BIT;
-            bool isPower = num3 & POWER_BIT;
-            if (powerBtnPressed) {
-                if (!isPower) {
-                    std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - powerButtonTimeout);
-                    if (ms.count() <= 1500) {
-                        packetInputBtn.button.btnPower = true;
-                    }
-                    powerBtnPressed = false;
-                }
-            } else {
-                powerButtonTimeout = std::chrono::system_clock::now();
-                powerBtnPressed = true;
-            }
-            callListenCallback(packetInputBtn);
         }
     }
 }
