@@ -330,7 +330,6 @@ void PortAccessor::stopContinuousRead() {
         if (continuousReadThread.joinable()) {
             continuousReadThread.join();
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     } else {
         throw std::runtime_error("Port is not open");
     }
@@ -380,7 +379,7 @@ void PortAccessor::startContinuousRead() {
                     }
 
                     if (packetRealignmentHelper) {
-                        std::vector<std::vector<uint8_t> > newPacket = packetRealignmentHelper->processPacket(data);
+                        std::vector<std::vector<uint8_t>> newPacket = packetRealignmentHelper->processPacket(data);
                         if (newPacket.empty()) {
                             continue;
                         } else {
