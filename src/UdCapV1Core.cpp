@@ -215,25 +215,24 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
         if (linkState == 0) {
             packet.udState = UdState::UD_INIT_STATE_NOT_CONNECT;
 
-            if (packet.udState != udState) {
+            if (udState != UdState::UD_INIT_STATE_NOT_CONNECT) {
                 callListenCallback(packet);
             }
             if (udState != UdState::UD_INIT_STATE_NOT_CONNECT && udState != UdState::UD_INIT_STATE_INIT) {
                 udState = packet.udState;
                 mcuStopData();
             }
-            udState = packet.udState;
+            udState = UdState::UD_INIT_STATE_NOT_CONNECT;
         } else if (linkState == 1) {
             packet.udState = UdState::UD_INIT_STATE_CONNECTED;
 
-            if (packet.udState != udState) {
+            if (udState != UdState::UD_INIT_STATE_CONNECTED && udState != UdState::UD_INIT_STATE_LINKED) {
                 callListenCallback(packet);
             }
             if (udState == UdState::UD_INIT_STATE_NOT_CONNECT || udState == UdState::UD_INIT_STATE_INIT) {
-                udState = packet.udState;
+                udState = UdState::UD_INIT_STATE_CONNECTED;
                 mcuStartData();
             }
-            udState = packet.udState;
         }
     } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SET_CHANNEL_DONE) {
         UdCapV1MCUPacket packet{};
@@ -552,8 +551,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                 UdCapV1MCUPacket dataPacket{};
                 dataPacket.address = packetBuffer[2];
                 dataPacket.commandType = CommandType::CMD_ANGLE;
-                dataPacket.result = std::vector<
-                    double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
+                dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
                 callListenCallback(dataPacket);
             }
         }
