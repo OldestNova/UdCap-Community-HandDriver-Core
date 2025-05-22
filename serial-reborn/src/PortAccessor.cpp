@@ -4,6 +4,7 @@
 
 #include "PortAccessor.h"
 #include <hidapi.h>
+#include <iomanip>
 #include <iostream>
 
 PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() {
@@ -33,6 +34,13 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
                         this->onceRawDataCallbacks.erase(fd);
                     }
                 } else {
+                    if (printRxTxToStdOut) {
+                        std::cout << "Receive: ";
+                        for (uint8_t b: packet) {
+                            std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(b) << " ";
+                        }
+                        std::cout << std::endl;
+                    }
                     for (auto &pair : this->dataCallbacks) {
                         pair.second(packet);
                     }
@@ -60,8 +68,20 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
                     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
                 }
                 if (packet.isString) {
+                    if (printRxTxToStdOut) {
+                        std::cout << "Send(String): ";
+                        std::cout << packet.strData;
+                        std::cout << std::endl;
+                    }
                     writeDataToDevice(boost::asio::buffer((packet.strData)));
                 } else {
+                    if (printRxTxToStdOut) {
+                        std::cout << "Send(Hex): ";
+                        for (uint8_t b: packet.byteData) {
+                            std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(b) << " ";
+                        }
+                        std::cout << std::endl;
+                    }
                     writeDataToDevice(boost::asio::buffer((packet.byteData)));
                 }
             } catch (std::exception &e) {
@@ -243,6 +263,13 @@ std::vector<uint8_t> PortAccessor::readData() {
             }
 
         }
+        if (printRxTxToStdOut) {
+            std::cout << "Receive: ";
+            for (uint8_t b: buffer) {
+                std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(b) << " ";
+            }
+            std::cout << std::endl;
+        }
         return buffer;
     } else {
         throw std::runtime_error("Port is not open");
@@ -404,4 +431,8 @@ bool PortAccessor::hasPacketRealignmentHelper() const {
 
 void PortAccessor::setWriteDelay(const uint64_t delay) {
     txEventLoopSendDelay.store(delay);
+}
+
+void PortAccessor::setPrintRxTxToStdOut(bool enable) {
+    printRxTxToStdOut = enable;
 }

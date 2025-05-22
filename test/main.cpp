@@ -58,6 +58,7 @@ int main() {
         for (const auto &device: devices) {
             std::cout << "Found device: " << device.portName << std::endl;
             std::shared_ptr<PortAccessor> portAccessor = std::make_shared<PortAccessor>(device);
+            portAccessor->setPrintRxTxToStdOut(true);
             UdCapProbe prober(portAccessor);
             switch (prober.probe()) {
                 case UDCAP_PROBE_FAILURE: {
@@ -146,11 +147,13 @@ int main() {
     } catch (const std::runtime_error &e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
-    std::unique_lock lk(mtx);
-    cv.wait(lk);
-    for (auto unlisten: unlistenFunc) {
-        unlisten();
+    if (!cores.empty()) {
+        std::unique_lock lk(mtx);
+        cv.wait(lk);
+        for (auto unlisten: unlistenFunc) {
+            unlisten();
+        }
+        cores.clear();
     }
-    cores.clear();
     return 0;
 }

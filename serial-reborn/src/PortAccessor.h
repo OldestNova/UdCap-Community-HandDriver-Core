@@ -76,7 +76,9 @@ public:
     void stopContinuousRead();
     void setWriteDelay(const uint64_t delay);
     std::function<void()> addOnceRawDataCallback(const std::function<bool(const std::vector<uint8_t> &)> &);
+    void setPrintRxTxToStdOut(bool enable);
 private:
+    bool printRxTxToStdOut = false;
     std::atomic_uint32_t callbackFd = 0;
     void writeDataToDevice(const boost::asio::const_buffer &buffer);
     SerialDevice serialDevice;
