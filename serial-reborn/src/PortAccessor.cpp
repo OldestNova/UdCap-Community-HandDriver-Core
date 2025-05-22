@@ -330,6 +330,7 @@ void PortAccessor::stopContinuousRead() {
         if (continuousReadThread.joinable()) {
             continuousReadThread.join();
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     } else {
         throw std::runtime_error("Port is not open");
     }
