@@ -4,6 +4,7 @@
 
 #include "PortAccessor.h"
 #include <hidapi.h>
+#include <iostream>
 
 PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() {
     if (!port.isHid) {
@@ -17,11 +18,24 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
                 continue;
             }
             try {
-                std::vector<uint8_t> packet = rxQueue.front();
+                ReceiveDataItem item = rxQueue.front();
+                std::vector<uint8_t> packet = item.byteData;
                 rxQueue.pop();
                 std::lock_guard guard(callbackMutex);
-                for (auto &callback : this->dataCallbacks) {
-                    callback(packet);
+                if (item.isOnceRaw) {
+                    std::vector<uint32_t> removable;
+                    for (auto &pair : this->onceRawDataCallbacks) {
+                        if (pair.second(packet)) {
+                            removable.push_back(pair.first);
+                        }
+                    }
+                    for (auto &fd : removable) {
+                        this->onceRawDataCallbacks.erase(fd);
+                    }
+                } else {
+                    for (auto &pair : this->dataCallbacks) {
+                        pair.second(packet);
+                    }
                 }
             } catch (std::exception &e) {
 
@@ -61,6 +75,12 @@ PortAccessor::PortAccessor(const SerialDevice & port): serialDevice(port), io() 
 
 PortAccessor::~PortAccessor() {
     eventLoopRunning.store(false);
+    if (continuousReadRunning.load()) {
+        continuousReadRunning.store(false);
+        if (continuousReadThread.joinable()) {
+            continuousReadThread.join();
+        }
+    }
     closePort();
 }
 
@@ -275,6 +295,7 @@ void PortAccessor::stopContinuousRead() {
         if (continuousReadThread.joinable()) {
             continuousReadThread.join();
         }
+
     } else {
         throw std::runtime_error("Port is not open");
     }
@@ -297,7 +318,8 @@ void PortAccessor::startContinuousRead() {
         continuousReadRunning.store(true);
         continuousReadThread = std::thread([this] {
             while (continuousReadRunning.load()) {
-                std::vector<uint8_t> data(this->readSize);
+                try {
+                    std::vector<uint8_t> data(this->readSize);
                 try {
                     if (serialDevice.isHid) {
                         size_t size = hid_read_timeout(hidDevice, data.data(), this->readSize, (int)this->timeout);
@@ -312,6 +334,15 @@ void PortAccessor::startContinuousRead() {
                 if (data.empty()) {
                     continue;
                 }
+
+                if (!onceRawDataCallbacks.empty()) {
+                    ReceiveDataItem item {};
+                    item.isOnceRaw = true;
+                    item.byteData = data;
+                    rxQueue.push(item);
+                    rxQueueCondition.notify_all();
+                }
+
                 if (packetRealignmentHelper) {
                     std::vector<std::vector<uint8_t>> newPacket = packetRealignmentHelper->processPacket(data);
                     if (newPacket.empty()) {
@@ -321,17 +352,25 @@ void PortAccessor::startContinuousRead() {
                             if (packet.empty()) {
                                 continue;
                             }
-                            rxQueue.push(packet);
+                            ReceiveDataItem item {};
+                            item.isOnceRaw = false;
+                            item.byteData = packet;
+                            rxQueue.push(item);
                             rxQueueCondition.notify_all();
                         }
                     }
                 } else {
-                    rxQueue.push(data);
+                    ReceiveDataItem item {};
+                    item.isOnceRaw = false;
+                    item.byteData = data;
+                    rxQueue.push(item);
                     rxQueueCondition.notify_all();
+                }
+                } catch (std::exception &e) {
+
                 }
             }
         });
-        continuousReadThread.detach();
     } else {
         throw std::runtime_error("Port is not open");
     }
@@ -339,13 +378,19 @@ void PortAccessor::startContinuousRead() {
 
 std::function<void()> PortAccessor::addDataCallback(const std::function<void(const std::vector<uint8_t> &)>& callback) {
     std::lock_guard guard(callbackMutex);
-    dataCallbacks.push_back(callback);
-    return [this, callback]() {
-        // Remove the callback from the list
-        dataCallbacks.erase(std::remove_if(dataCallbacks.begin(), dataCallbacks.end(),
-                                           [&callback](const std::function<void(const std::vector<uint8_t>&)>& item) {
-                                               return item.target_type() == callback.target_type();
-                                           }), dataCallbacks.end());
+    uint32_t fd = callbackFd.fetch_add(1);
+    dataCallbacks[fd] = callback;
+    return [this, fd]() {
+        dataCallbacks.erase(fd);
+    };
+}
+
+std::function<void()> PortAccessor::addOnceRawDataCallback(const std::function<bool(const std::vector<uint8_t> &)> & callback) {
+    std::lock_guard guard(callbackMutex);
+    uint32_t fd = callbackFd.fetch_add(1);
+    onceRawDataCallbacks[fd] = callback;
+    return [this, fd]() {
+        onceRawDataCallbacks.erase(fd);
     };
 }
 

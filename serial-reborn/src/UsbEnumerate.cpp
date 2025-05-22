@@ -103,7 +103,7 @@ void UsbEnumerate::refresh(UsbEnumerateRefreshType type) {
 }
 
 void UsbEnumerate::printDevices() {
-    std::cout << "IsHID\tVID\tPID\t\tComposite\tSerial Number\tPort Name" << std::endl;
+    std::cout << "IsHID\tVID\t\tPID\t\tComposite\tSerial Number\tPort Name" << std::endl;
     for (const auto &device: devices) {
         std::string comp = "";
         if (device.composite) {
@@ -112,9 +112,9 @@ void UsbEnumerate::printDevices() {
             comp = "NO";
         }
         std::cout << device.isHid << "\t"
-                << std::hex << std::setw(4) << std::setfill('0') << device.vid << "\t"
+                << std::hex << std::setw(4) << std::setfill('0') << device.vid << "\t\t"
                 << std::hex << std::setw(4) << std::setfill('0') << device.pid << "\t\t"
-                << comp << "\t\t\t"
+                << comp << "\t\t"
                 << device.serialNumber << "\t\t"
                 << device.portName << std::endl;
     }

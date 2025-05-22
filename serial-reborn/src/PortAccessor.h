@@ -12,6 +12,7 @@
 #include <functional>
 #include <thread>
 #include <hidapi.h>
+#include <map>
 #include <queue>
 
 enum StopBit {
@@ -31,6 +32,11 @@ enum FlowControl {
 struct SendDataItem {
     bool isString;
     std::string strData;
+    std::vector<uint8_t> byteData;
+};
+
+struct ReceiveDataItem {
+    bool isOnceRaw;
     std::vector<uint8_t> byteData;
 };
 
@@ -69,7 +75,9 @@ public:
     void startContinuousRead();
     void stopContinuousRead();
     void setWriteDelay(const uint64_t delay);
+    std::function<void()> addOnceRawDataCallback(const std::function<bool(const std::vector<uint8_t> &)> &);
 private:
+    std::atomic_uint32_t callbackFd = 0;
     void writeDataToDevice(const boost::asio::const_buffer &buffer);
     SerialDevice serialDevice;
     boost::asio::io_context io;
@@ -83,13 +91,14 @@ private:
     std::atomic_bool continuousReadRunning = false;
     std::atomic_int32_t continuousReadStartCount = 0;
     std::unique_ptr<PacketRealignmentHelper> packetRealignmentHelper;
-    std::vector<std::function<void(const std::vector<uint8_t> &)>> dataCallbacks;
+    std::map<uint32_t, std::function<void(const std::vector<uint8_t> &)>> dataCallbacks;
+    std::map<uint32_t, std::function<bool(const std::vector<uint8_t> &)>> onceRawDataCallbacks;
 
     // EventLoop
     std::atomic_bool eventLoopRunning = true;
     // RX EventLoop
     std::thread rxEventThread;
-    std::queue<std::vector<uint8_t>> rxQueue;
+    std::queue<ReceiveDataItem> rxQueue;
     std::mutex rxQueueMutex;
     std::condition_variable rxQueueCondition;
     // TX EventLoop

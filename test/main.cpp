@@ -6,13 +6,14 @@
 #include <iostream>
 #include <functional>
 #include <vector>
-#include <csignal>
 #include <UsbEnumerate.h>
 #include <PortAccessor.h>
 #include <UdCapProbe.h>
 #include <UdCapV1Core.h>
 #if WIN32
 #include <windows.h>
+#else
+#include <csignal>
 #endif
 
 std::vector<std::function<void()>> unlistenFunc;

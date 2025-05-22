@@ -15,7 +15,7 @@ ImportAR1Linear(AR1LinearAG)
 uint8_t calculateCRC(const std::vector<uint8_t> &data, bool ignoreLast) {
     uint8_t crc = 0;
     size_t lastIndex = ignoreLast ? data.size() - 1 : data.size();
-    for (size_t i = 2; i < data.size() - 1; i++) {
+    for (size_t i = 2; i < lastIndex; i++) {
         crc += data[i];
     }
     return crc;
@@ -118,8 +118,8 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
             }
             UdCapV1MCUPacket packet = packetQueue.front();
             packetQueue.pop();
-            for (const auto &callback: listenCallbacks) {
-                callback(packet);
+            for (const auto &pair: listenCallbacks) {
+                pair.second(packet);
             }
         }
     });
@@ -147,13 +147,11 @@ UdCapV1Core::~UdCapV1Core() {
 
 std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1MCUPacket &)> &callback) {
     std::lock_guard guard(callbackMutex);
-    listenCallbacks.push_back(callback);
-    return [this, callback]() {
+    uint32_t fd = callbackFd.fetch_add(1);
+    listenCallbacks[fd] = callback;
+    return [this, fd]() {
         // Remove the callback from the list
-        listenCallbacks.erase(std::remove_if(listenCallbacks.begin(), listenCallbacks.end(),
-                                             [&callback](const std::function<void(const UdCapV1MCUPacket &)> &item) {
-                                                 return item.target_type() == callback.target_type();
-                                             }), listenCallbacks.end());
+        listenCallbacks.erase(fd);
     };
 }
 
