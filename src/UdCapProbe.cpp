@@ -55,7 +55,7 @@ UdCapProbeType UdCapProbe::probe() {
         std::string s = "AT+NAME?\r\n";
         portAccessor->writeData(s);
         std::unique_lock lk(mutex);
-        auto state = condition.wait_for(lk, std::chrono::seconds(2));
+        auto state = condition.wait_for(lk, std::chrono::seconds(3));
         portAccessor->stopContinuousRead();
         if (state == std::cv_status::timeout) {
             this->udCapSerial = "";
