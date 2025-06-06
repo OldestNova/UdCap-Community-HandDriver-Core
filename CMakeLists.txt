@@ -3,6 +3,7 @@ project(UdCapCommunityDriverCore)
 
 option(BUILD_TEST_TOOLS "Build Test Tool" OFF)
 option(TEST_TOOLS_PRINT_RAW "Print raw data on test tool" OFF)
+option(COPY_HIDAPI_DLL "Copy hidapi.dll to output directory" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 file(
@@ -26,7 +27,7 @@ include_directories(src)
 add_library(UdCapCommunityDriverCore STATIC ${SRC_FILES})
 target_link_libraries(UdCapCommunityDriverCore PUBLIC SerialReborn AR1Linear)
 target_include_directories(UdCapCommunityDriverCore PUBLIC src)
-IF (WIN32)
+IF (WIN32 AND COPY_HIDAPI_DLL)
     add_custom_command(TARGET UdCapCommunityDriverCore POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_BINARY_DIR}/serial-reborn/hidapi.dll"
@@ -40,7 +41,7 @@ IF (BUILD_TEST_TOOLS)
     ENDIF ()
     add_executable(UdCapCommunityDriverCoreTest test/main.cpp)
     target_link_libraries(UdCapCommunityDriverCoreTest PRIVATE UdCapCommunityDriverCore)
-IF (WIN32)
+IF (WIN32 AND COPY_HIDAPI_DLL)
     add_custom_command(TARGET UdCapCommunityDriverCoreTest POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_BINARY_DIR}/hidapi.dll"

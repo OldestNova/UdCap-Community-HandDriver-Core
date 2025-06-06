@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 project(SerialReborn)
 
 set(CMAKE_CXX_STANDARD 17)
+option(COPY_HIDAPI_DLL "Copy hidapi.dll to the output directory" OFF)
 file(
         DOWNLOAD
         https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.40.8/CPM.cmake
@@ -50,7 +51,7 @@ message(STATUS ${Boost_SOURCE_DIR}/libs/asio/include)
 target_link_libraries(SerialReborn PUBLIC usb-1.0 hidapi::hidapi usbp Boost::asio Boost::container)
 target_include_directories(SerialReborn PUBLIC src ${Boost_SOURCE_DIR}/libs/asio/include ${Boost_SOURCE_DIR}/libs/container/include ${hidapi_SOURCE_DIR}/hidapi)
 
-IF (WIN32)
+IF (WIN32 AND COPY_HIDAPI_DLL)
     add_custom_command(TARGET SerialReborn POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_BINARY_DIR}/_deps/hidapi-build/src/windows/hidapi.dll"
