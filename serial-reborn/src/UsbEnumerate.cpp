@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <hidapi.h>
+#include <libusb.h>
 #include <libusbp.hpp>
 #include "UsbEnumerate.h"
 
@@ -26,22 +27,23 @@ void UsbEnumerate::refresh(UsbEnumerateRefreshType type) {
                 uint16_t vendorId = device.get_vendor_id();
                 uint16_t productId = device.get_product_id();
                 try {
-                    SerialDevice serialDevice{};
-                    serialDevice.isHid = false;
+                    std::string serialNumber = "";
                     try {
-                        serialDevice.serialNumber = device.get_serial_number();
+                        serialNumber = device.get_serial_number();
                     } catch (const libusbp::error &) {
-                        serialDevice.serialNumber = "";
+                        serialNumber = "";
                     }
-                    serialDevice.vid = vendorId;
-                    serialDevice.pid = productId;
+
                     bool success = false;
                     for (uint32_t i = 0; i < 255; i++) {
                         try {
                             libusbp::serial_port port(device, i, true);
                             std::string port_name = port.get_name();
                             SerialDevice compSerialDevice {};
-                            memcpy(&compSerialDevice, &serialDevice, sizeof(SerialDevice));
+                            compSerialDevice.isHid = false;
+                            compSerialDevice.vid = vendorId;
+                            compSerialDevice.pid = productId;
+                            compSerialDevice.serialNumber = serialNumber;
                             compSerialDevice.interfaceNumber = i;
                             compSerialDevice.composite = true;
                             compSerialDevice.portName = port_name;
@@ -54,6 +56,11 @@ void UsbEnumerate::refresh(UsbEnumerateRefreshType type) {
                     if (!success) {
                         try {
                             libusbp::serial_port port(device, 0, false);
+                            SerialDevice serialDevice {};
+                            serialDevice.isHid = false;
+                            serialDevice.vid = vendorId;
+                            serialDevice.pid = productId;
+                            serialDevice.serialNumber = serialNumber;
                             serialDevice.interfaceNumber = 0;
                             serialDevice.composite = false;
                             std::string port_name = port.get_name();
