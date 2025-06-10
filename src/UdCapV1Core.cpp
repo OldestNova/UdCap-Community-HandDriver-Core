@@ -178,6 +178,9 @@ std::string UdCapV1Core::getUDCapSerial() const {
 }
 
 void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
+    if (packetBuffer.size() < 6) {
+        return; // Invalid packet size
+    }
     uint8_t dataLength = packetBuffer[5];
     std::vector<uint8_t> data;
     for (size_t i = 6; i < 6 + dataLength; i++) {
