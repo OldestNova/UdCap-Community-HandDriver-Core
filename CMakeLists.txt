@@ -18,6 +18,18 @@ add_subdirectory(serial-reborn)
 
 add_subdirectory(ar1_linear)
 
+CPMAddPackage(
+        NAME Eigen
+        VERSION 3.4.0
+        URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
+        DOWNLOAD_ONLY YES
+)
+
+if(Eigen_ADDED)
+    add_library(Eigen INTERFACE IMPORTED GLOBAL)
+    target_include_directories(Eigen INTERFACE ${Eigen_SOURCE_DIR})
+endif()
+
 file(GLOB_RECURSE SRC_FILES
         src/*.cpp
         src/*.h
@@ -25,7 +37,7 @@ file(GLOB_RECURSE SRC_FILES
 )
 include_directories(src)
 add_library(UdCapCommunityDriverCore STATIC ${SRC_FILES})
-target_link_libraries(UdCapCommunityDriverCore PUBLIC SerialReborn AR1Linear)
+target_link_libraries(UdCapCommunityDriverCore PUBLIC SerialReborn AR1Linear Eigen)
 target_include_directories(UdCapCommunityDriverCore PUBLIC src)
 IF (WIN32 AND COPY_HIDAPI_DLL)
     add_custom_command(TARGET UdCapCommunityDriverCore POST_BUILD

@@ -125,19 +125,88 @@ int main() {
                                 // core.mcuSendVibration(1, 2, 10);
                             }
                         } else if (data.commandType == CMD_ANGLE) {
-                            std::vector<double> angles = data.result;
-                            std::cout << "Angles: ";
-                            for (int i = 0; i < angles.size(); i++) {
-                                std::cout << angles[i] << ", ";
-                            }
-                            std::cout << std::endl;
+//                            std::vector<double> angles = data.result;
+//                            std::cout << "Angles: ";
+//                            for (int i = 0; i < angles.size(); i++) {
+//                                std::cout << angles[i] << ", ";
+//                            }
+//                            std::cout << std::endl;
                         } else if (data.commandType == CMD_INPUT_JOYSTICK) {
-                                std::cout << "Input joystick. X: " << data.joystickData.joyX << " Y: " << data.
-                                        joystickData.joyY << std::endl;
+//                                std::cout << "Input joystick. X: " << data.joystickData.joyX << " Y: " << data.
+//                                        joystickData.joyY << std::endl;
                         } else if (data.commandType == CMD_INPUT_BUTTON) {
-                                std::cout << "Input Button. A: " << data.button.btnA << " B: " << data.button.btnB <<
-                                        " Menu: " << data.button.btnMenu << " JoyStick: " << data.button.btnJoyStick <<
-                                        " PWR: " << data.button.btnPower << std::endl;
+//                                std::cout << "Input Button. A: " << data.button.btnA << " B: " << data.button.btnB <<
+//                                        " Menu: " << data.button.btnMenu << " JoyStick: " << data.button.btnJoyStick <<
+//                                        " PWR: " << data.button.btnPower << std::endl;
+                        } else if (data.commandType == CMD_SKELETON_QUATERNION) {
+                            std::cout << "Skeleton Quaternion: " << std::endl;
+
+                            std::cout << " Thumb Distal: " << data.skeletonQuaternion.thumbFinger.distal.x << ", "
+                                      << data.skeletonQuaternion.thumbFinger.distal.y << ", "
+                                      << data.skeletonQuaternion.thumbFinger.distal.z << ", "
+                                      << data.skeletonQuaternion.thumbFinger.distal.w << std::endl;
+                            std::cout << " Thumb Intermediate: " << data.skeletonQuaternion.thumbFinger.intermediate.x << ", "
+                                        << data.skeletonQuaternion.thumbFinger.intermediate.y << ", "
+                                        << data.skeletonQuaternion.thumbFinger.intermediate.z << ", "
+                                        << data.skeletonQuaternion.thumbFinger.intermediate.w << std::endl;
+                            std::cout << " Thumb Proximal: " << data.skeletonQuaternion.thumbFinger.proximal.x << ", "
+                                        << data.skeletonQuaternion.thumbFinger.proximal.y << ", "
+                                        << data.skeletonQuaternion.thumbFinger.proximal.z << ", "
+                                        << data.skeletonQuaternion.thumbFinger.proximal.w << std::endl;
+
+                            std::cout << " Index Distal: " << data.skeletonQuaternion.indexFinger.distal.x << ", "
+                                      << data.skeletonQuaternion.indexFinger.distal.y << ", "
+                                      << data.skeletonQuaternion.indexFinger.distal.z << ", "
+                                      << data.skeletonQuaternion.indexFinger.distal.w << std::endl;
+                            std::cout << " Index Intermediate: " << data.skeletonQuaternion.indexFinger.intermediate.x << ", "
+                                      << data.skeletonQuaternion.indexFinger.intermediate.y << ", "
+                                      << data.skeletonQuaternion.indexFinger.intermediate.z << ", "
+                                      << data.skeletonQuaternion.indexFinger.intermediate.w << std::endl;
+                            std::cout << " Index Proximal: " << data.skeletonQuaternion.indexFinger.proximal.x << ", "
+                                      << data.skeletonQuaternion.indexFinger.proximal.y << ", "
+                                      << data.skeletonQuaternion.indexFinger.proximal.z << ", "
+                                      << data.skeletonQuaternion.indexFinger.proximal.w << std::endl;
+
+                            std::cout << " Middle Distal: " << data.skeletonQuaternion.middleFinger.distal.x << ", "
+                                      << data.skeletonQuaternion.middleFinger.distal.y << ", "
+                                      << data.skeletonQuaternion.middleFinger.distal.z << ", "
+                                      << data.skeletonQuaternion.middleFinger.distal.w << std::endl;
+                            std::cout << " Middle Intermediate: " << data.skeletonQuaternion.middleFinger.intermediate.x << ", "
+                                      << data.skeletonQuaternion.middleFinger.intermediate.y << ", "
+                                      << data.skeletonQuaternion.middleFinger.intermediate.z << ", "
+                                      << data.skeletonQuaternion.middleFinger.intermediate.w << std::endl;
+                            std::cout << " Middle Proximal: " << data.skeletonQuaternion.middleFinger.proximal.x << ", "
+                                      << data.skeletonQuaternion.middleFinger.proximal.y << ", "
+                                      << data.skeletonQuaternion.middleFinger.proximal.z << ", "
+                                      << data.skeletonQuaternion.middleFinger.proximal.w << std::endl;
+
+                            std::cout << " Ring Distal: " << data.skeletonQuaternion.ringFinger.distal.x << ", "
+                                      << data.skeletonQuaternion.ringFinger.distal.y << ", "
+                                      << data.skeletonQuaternion.ringFinger.distal.z << ", "
+                                      << data.skeletonQuaternion.ringFinger.distal.w << std::endl;
+                            std::cout << " Ring Intermediate: " << data.skeletonQuaternion.ringFinger.intermediate.x << ", "
+                                      << data.skeletonQuaternion.ringFinger.intermediate.y << ", "
+                                      << data.skeletonQuaternion.ringFinger.intermediate.z << ", "
+                                      << data.skeletonQuaternion.ringFinger.intermediate.w << std::endl;
+                            std::cout << " Ring Proximal: " << data.skeletonQuaternion.ringFinger.proximal.x << ", "
+                                      << data.skeletonQuaternion.ringFinger.proximal.y << ", "
+                                      << data.skeletonQuaternion.ringFinger.proximal.z << ", "
+                                      << data.skeletonQuaternion.ringFinger.proximal.w << std::endl;
+
+                            std::cout << " Little Distal: " << data.skeletonQuaternion.littleFinger.distal.x << ", "
+                                      << data.skeletonQuaternion.littleFinger.distal.y << ", "
+                                      << data.skeletonQuaternion.littleFinger.distal.z << ", "
+                                      << data.skeletonQuaternion.littleFinger.distal.w << std::endl;
+                            std::cout << " Little Intermediate: " << data.skeletonQuaternion.littleFinger.intermediate.x << ", "
+                                      << data.skeletonQuaternion.littleFinger.intermediate.y << ", "
+                                      << data.skeletonQuaternion.littleFinger.intermediate.z << ", "
+                                      << data.skeletonQuaternion.littleFinger.intermediate.w << std::endl;
+                            std::cout << " Little Proximal: " << data.skeletonQuaternion.littleFinger.proximal.x << ", "
+                                      << data.skeletonQuaternion.littleFinger.proximal.y << ", "
+                                      << data.skeletonQuaternion.littleFinger.proximal.z << ", "
+                                      << data.skeletonQuaternion.littleFinger.proximal.w << std::endl;
+
+                            std::cout << std::endl;
                         }
                     });
                     cores.push_back(core);

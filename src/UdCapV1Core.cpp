@@ -6,7 +6,9 @@
 #include <AR1Linear.hpp>
 #include <filesystem>
 #include <iostream>
-
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#define M_PI 3.14159265358979323846
 ImportAR1Linear(AR1LinearAA)
 ImportAR1Linear(AR1LinearAD)
 ImportAR1Linear(AR1LinearAE)
@@ -29,6 +31,24 @@ std::vector<uint8_t> decodeXOR(std::vector<uint8_t> data) {
         result.push_back(u);
     }
     return result;
+}
+
+BoneQuaternion eulerToQuaternion(double pitch, double yaw, double roll) {
+    // 角度转弧度
+    double yaw_rad   = yaw   * M_PI / 180.0;
+    double pitch_rad = pitch * M_PI / 180.0;
+    double roll_rad  = roll  * M_PI / 180.0;
+
+    // 创建各轴旋转的四元数（注意 roll 取负）
+    Eigen::Quaterniond q = Eigen::AngleAxisd(-roll, Eigen::Vector3d::UnitX()) *
+                           Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitY()) *
+                           Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitZ());
+    BoneQuaternion boneQ;
+    boneQ.x = q.x();
+    boneQ.y = q.y();
+    boneQ.z = q.z();
+    boneQ.w = q.w();
+    return boneQ;
 }
 
 std::vector<std::vector<uint8_t> > UdCapHandV1PacketRealignmentHelper::processPacket(const std::vector<uint8_t> &data) {
@@ -513,6 +533,27 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                     dataPacket.commandType = CommandType::CMD_ANGLE;
                     dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
                     callListenCallback(dataPacket);
+                }
+                {
+                    UdCapV1MCUPacket packetSkeleton{};
+                    packetSkeleton.address = packetBuffer[2];
+                    packetSkeleton.commandType = CommandType::CMD_SKELETON_QUATERNION;
+                    packetSkeleton.skeletonQuaternion.thumbFinger.distal = eulerToQuaternion(_calibrationDataC[0], 0, 0);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.intermediate = eulerToQuaternion(_calibrationDataC[1], 0, 0);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.proximal = eulerToQuaternion(_calibrationDataC[2], _calibrationDataC[20], _calibrationDataC[3]);
+                    packetSkeleton.skeletonQuaternion.indexFinger.distal = eulerToQuaternion(_calibrationDataC[4], 0, 0);
+                    packetSkeleton.skeletonQuaternion.indexFinger.intermediate = eulerToQuaternion(_calibrationDataC[5], 0, 0);
+                    packetSkeleton.skeletonQuaternion.indexFinger.proximal = eulerToQuaternion(_calibrationDataC[6], _calibrationDataC[7], _calibrationDataC[21]);
+                    packetSkeleton.skeletonQuaternion.middleFinger.distal = eulerToQuaternion(_calibrationDataC[8], 0, 0);
+                    packetSkeleton.skeletonQuaternion.middleFinger.intermediate = eulerToQuaternion(_calibrationDataC[9], 0, 0);
+                    packetSkeleton.skeletonQuaternion.middleFinger.proximal = eulerToQuaternion(_calibrationDataC[10], _calibrationDataC[11], 0);
+                    packetSkeleton.skeletonQuaternion.ringFinger.distal = eulerToQuaternion(_calibrationDataC[12], 0, 0);
+                    packetSkeleton.skeletonQuaternion.ringFinger.intermediate = eulerToQuaternion(_calibrationDataC[13], 0, 0);
+                    packetSkeleton.skeletonQuaternion.ringFinger.proximal = eulerToQuaternion(_calibrationDataC[14], _calibrationDataC[15], 0);
+                    packetSkeleton.skeletonQuaternion.littleFinger.distal = eulerToQuaternion(_calibrationDataC[16], 0, 0);
+                    packetSkeleton.skeletonQuaternion.littleFinger.intermediate = eulerToQuaternion(_calibrationDataC[17], 0, 0);
+                    packetSkeleton.skeletonQuaternion.littleFinger.proximal = eulerToQuaternion(_calibrationDataC[18], _calibrationDataC[19], _calibrationDataC[22]);
+                    callListenCallback(packetSkeleton);
                 }
                 {
                     if (joystickCaliStat == UDCAP_V1_JOYSTICK_CALI_STAT_CAPTURE_ZONE) {

@@ -30,6 +30,7 @@ enum UdCapV1StateMachine {
 };
 
 enum CommandType {
+    CMD_SKELETON_QUATERNION = -5,
     CMD_INPUT_BUTTON = -4,
     CMD_INPUT_JOYSTICK = -3,
     CMD_ANGLE = -2,
@@ -72,6 +73,27 @@ enum UdState {
     UD_INIT_STATE_LINKED = 3
 };
 
+struct BoneQuaternion {
+    float x;
+    float y;
+    float z;
+    float w;
+};
+
+struct FingerQuaternion {
+    BoneQuaternion proximal;
+    BoneQuaternion intermediate;
+    BoneQuaternion distal;
+};
+
+struct HandQuaternion {
+    FingerQuaternion thumbFinger;
+    FingerQuaternion indexFinger;
+    FingerQuaternion middleFinger;
+    FingerQuaternion ringFinger;
+    FingerQuaternion littleFinger;
+};
+
 struct UdCapV1MCUPacket {
     uint8_t address;
     CommandType commandType;
@@ -87,8 +109,8 @@ struct UdCapV1MCUPacket {
     std::vector<double> result;
     UdCapV1JoystickData joystickData {};
     UdCapV1ButtonData button {};
+    HandQuaternion skeletonQuaternion {};
 };
-
 
 class UdCapHandV1PacketRealignmentHelper : public PacketRealignmentHelper {
 public:
