@@ -40,9 +40,9 @@ BoneQuaternion eulerToQuaternion(double pitch, double yaw, double roll) {
     double z = roll  * M_PI / 180.0; // Z
 
     // 创建各轴旋转的四元数
-    Eigen::Quaterniond q = Eigen::AngleAxisd(y, Eigen::Vector3d::UnitY()) *
-                           Eigen::AngleAxisd(x, Eigen::Vector3d::UnitX()) *
-                           Eigen::AngleAxisd(z, Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond q = Eigen::AngleAxisd(z, Eigen::Vector3d::UnitZ()) *
+                            Eigen::AngleAxisd(y, Eigen::Vector3d::UnitY()) *
+                            Eigen::AngleAxisd(x, Eigen::Vector3d::UnitX());
     BoneQuaternion boneQ;
     boneQ.x = q.x();
     boneQ.y = q.y();
