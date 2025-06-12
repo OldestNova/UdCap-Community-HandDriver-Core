@@ -238,7 +238,7 @@ public:
 
     std::string getUDCapSerial() const;
 
-
+    BoneQuaternion eulerToQuaternion(double pitch, double yaw, double roll);
 
     void mcuStopData();
 

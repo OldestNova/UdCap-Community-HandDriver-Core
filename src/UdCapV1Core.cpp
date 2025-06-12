@@ -33,15 +33,21 @@ std::vector<uint8_t> decodeXOR(std::vector<uint8_t> data) {
     return result;
 }
 
-BoneQuaternion eulerToQuaternion(double pitch, double yaw, double roll) {
+BoneQuaternion UdCapV1Core::eulerToQuaternion(double pitch, double yaw, double roll) {
     // 角度转弧度
     double x = pitch * M_PI / 180.0; // X
     double y = yaw   * M_PI / 180.0; // Y
     double z = roll  * M_PI / 180.0; // Z
 
+    if (target == UD_TARGET_LEFT_HAND) {
+        x = -x;
+        y = -y;
+        z = -z;
+    }
+
     // 创建各轴旋转的四元数
-    Eigen::Quaterniond q = Eigen::AngleAxisd(z, Eigen::Vector3d::UnitX()) *
-                            Eigen::AngleAxisd(y, Eigen::Vector3d::UnitY()) *
+    Eigen::Quaterniond q = Eigen::AngleAxisd(z, Eigen::Vector3d::UnitY()) *
+                            Eigen::AngleAxisd(y, Eigen::Vector3d::UnitX()) *
                             Eigen::AngleAxisd(x, Eigen::Vector3d::UnitZ());
     BoneQuaternion boneQ;
     boneQ.x = q.x();
