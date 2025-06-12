@@ -41,9 +41,9 @@ BoneQuaternion UdCapV1Core::eulerToQuaternion(double pitch, double yaw, double r
 
     if (target == UD_TARGET_LEFT_HAND) {
         x = -x;
-        z = -z;
     } else {
         y = -y;
+        z = -z;
     }
 
     // 创建各轴旋转的四元数
@@ -177,6 +177,7 @@ std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1
     uint32_t fd = callbackFd.fetch_add(1);
     listenCallbacks[fd] = callback;
     return [this, fd]() {
+        std::lock_guard guard(callbackMutex);
         listenCallbacks.erase(fd);
     };
 }
