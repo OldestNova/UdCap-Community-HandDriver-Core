@@ -592,7 +592,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                     packetSkeleton.skeletonQuaternion.littleFinger.intermediate = eulerToQuaternion(0, 0, 0 - conLittle2);
                     packetSkeleton.skeletonQuaternion.littleFinger.distal = eulerToQuaternion(0, 0, 0 - conLittle3);
 
-                    packetSkeleton.skeletonQuaternion.thumbFinger.distal = eulerToQuaternion((0 - conThumb22) * thumbFix[2], conThumb1 * thumbFix[0], conThumb11 * thumbFix[1]);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.distal = eulerToQuaternion((0 - conThumb22) * thumbFix[2], conThumb1 * thumbFix[0], 0 - conThumb11 * thumbFix[1]);
                     packetSkeleton.skeletonQuaternion.thumbFinger.intermediate = eulerToQuaternion(0, 0, conThumb2);
                     packetSkeleton.skeletonQuaternion.thumbFinger.proximal = eulerToQuaternion(0,0 , conThumb3);
 
