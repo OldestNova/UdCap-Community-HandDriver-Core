@@ -41,8 +41,9 @@ BoneQuaternion UdCapV1Core::eulerToQuaternion(double pitch, double yaw, double r
 
     if (target == UD_TARGET_LEFT_HAND) {
         x = -x;
-        y = -y;
         z = -z;
+    } else {
+        y = -y;
     }
 
     // 创建各轴旋转的四元数
