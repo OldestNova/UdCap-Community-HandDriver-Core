@@ -46,8 +46,8 @@ BoneQuaternion UdCapV1Core::eulerToQuaternion(double pitch, double yaw, double r
     }
 
     // 创建各轴旋转的四元数
-    Eigen::Quaterniond q =  Eigen::AngleAxisd(y, Eigen::Vector3d::UnitX()) *
-                            Eigen::AngleAxisd(z, Eigen::Vector3d::UnitY()) *
+    Eigen::Quaterniond q =  Eigen::AngleAxisd(z, Eigen::Vector3d::UnitX()) *
+                            Eigen::AngleAxisd(y, Eigen::Vector3d::UnitY()) *
                             Eigen::AngleAxisd(x, Eigen::Vector3d::UnitZ());
     BoneQuaternion boneQ;
     boneQ.x = q.x();
