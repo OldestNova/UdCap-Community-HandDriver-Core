@@ -41,8 +41,8 @@ BoneQuaternion UdCapV1Core::eulerToQuaternion(double pitch, double yaw, double r
 
     if (target == UD_TARGET_LEFT_HAND) {
         x = -x;
-    } else {
         y = -y;
+    } else {
         z = -z;
     }
 
