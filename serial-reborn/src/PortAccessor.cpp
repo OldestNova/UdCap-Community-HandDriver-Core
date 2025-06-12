@@ -417,6 +417,7 @@ std::function<void()> PortAccessor::addDataCallback(const std::function<void(con
     uint32_t fd = callbackFd.fetch_add(1);
     dataCallbacks[fd] = callback;
     return [this, fd]() {
+        std::lock_guard guard(callbackMutex);
         dataCallbacks.erase(fd);
     };
 }
@@ -427,6 +428,7 @@ std::function<void()> PortAccessor::addOnceRawDataCallback(
     uint32_t fd = callbackFd.fetch_add(1);
     onceRawDataCallbacks[fd] = callback;
     return [this, fd]() {
+        std::lock_guard guard(callbackMutex);
         onceRawDataCallbacks.erase(fd);
     };
 }
