@@ -313,6 +313,7 @@ private:
     float deadZone = 0.15;
     bool thumbOn = true;
     bool isSettingChannel = false;
+    float thumbFix[3] = { 0.1f, 0.3f, 1.2f };
 
     std::chrono::system_clock::time_point powerButtonTimeout;
     bool powerBtnPressed = false;
