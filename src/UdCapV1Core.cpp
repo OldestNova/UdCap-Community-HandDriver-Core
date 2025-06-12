@@ -48,10 +48,10 @@ BoneQuaternion UdCapV1Core::eulerToQuaternion(double pitch, double yaw, double r
 
     // 创建各轴旋转的四元数
     Eigen::Quaterniond q =
-            Eigen::AngleAxisd(x, Eigen::Vector3d::UnitZ()) *
-            Eigen::AngleAxisd(z, Eigen::Vector3d::UnitX()) *
+            Eigen::AngleAxisd(z, Eigen::Vector3d::UnitZ()) *
+            Eigen::AngleAxisd(x, Eigen::Vector3d::UnitX()) *
             Eigen::AngleAxisd(y, Eigen::Vector3d::UnitY());
-    BoneQuaternion boneQ;
+    BoneQuaternion boneQ{};
     boneQ.x = q.x();
     boneQ.y = q.y();
     boneQ.z = q.z();
@@ -547,21 +547,55 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                     UdCapV1MCUPacket packetSkeleton{};
                     packetSkeleton.address = packetBuffer[2];
                     packetSkeleton.commandType = CommandType::CMD_SKELETON_QUATERNION;
-                    packetSkeleton.skeletonQuaternion.thumbFinger.distal = eulerToQuaternion(_calibrationDataC[0], 0, 0);
-                    packetSkeleton.skeletonQuaternion.thumbFinger.intermediate = eulerToQuaternion(_calibrationDataC[1], 0, 0);
-                    packetSkeleton.skeletonQuaternion.thumbFinger.proximal = eulerToQuaternion(_calibrationDataC[2], _calibrationDataC[20], _calibrationDataC[3]);
-                    packetSkeleton.skeletonQuaternion.indexFinger.distal = eulerToQuaternion(_calibrationDataC[4], 0, 0);
-                    packetSkeleton.skeletonQuaternion.indexFinger.intermediate = eulerToQuaternion(_calibrationDataC[5], 0, 0);
-                    packetSkeleton.skeletonQuaternion.indexFinger.proximal = eulerToQuaternion(_calibrationDataC[6], _calibrationDataC[7], _calibrationDataC[21]);
-                    packetSkeleton.skeletonQuaternion.middleFinger.distal = eulerToQuaternion(_calibrationDataC[8], 0, 0);
-                    packetSkeleton.skeletonQuaternion.middleFinger.intermediate = eulerToQuaternion(_calibrationDataC[9], 0, 0);
-                    packetSkeleton.skeletonQuaternion.middleFinger.proximal = eulerToQuaternion(_calibrationDataC[10], _calibrationDataC[11], 0);
-                    packetSkeleton.skeletonQuaternion.ringFinger.distal = eulerToQuaternion(_calibrationDataC[12], 0, 0);
-                    packetSkeleton.skeletonQuaternion.ringFinger.intermediate = eulerToQuaternion(_calibrationDataC[13], 0, 0);
-                    packetSkeleton.skeletonQuaternion.ringFinger.proximal = eulerToQuaternion(_calibrationDataC[14], _calibrationDataC[15], 0);
-                    packetSkeleton.skeletonQuaternion.littleFinger.distal = eulerToQuaternion(_calibrationDataC[16], 0, 0);
-                    packetSkeleton.skeletonQuaternion.littleFinger.intermediate = eulerToQuaternion(_calibrationDataC[17], 0, 0);
-                    packetSkeleton.skeletonQuaternion.littleFinger.proximal = eulerToQuaternion(_calibrationDataC[18], _calibrationDataC[19], _calibrationDataC[22]);
+
+                    double conThumb3 = _calibrationDataC[0];
+                    double conThumb2 = _calibrationDataC[1];
+                    double conThumb1 = _calibrationDataC[2];
+                    double conThumb11 = _calibrationDataC[20];
+                    double conThumb22 = _calibrationDataC[3];
+
+                    double conIndex3 = _calibrationDataC[4];
+                    double conIndex2 = _calibrationDataC[5];
+                    double conIndex1 = _calibrationDataC[6];
+                    double conIndex11 = _calibrationDataC[7];
+                    double conIndex22 = _calibrationDataC[21];
+
+                    double conMiddle3 = _calibrationDataC[8];
+                    double conMiddle2 = _calibrationDataC[9];
+                    double conMiddle1 = _calibrationDataC[10];
+                    double conMiddle11 = _calibrationDataC[11];
+
+                    double conRing3 = _calibrationDataC[12];
+                    double conRing2 = _calibrationDataC[13];
+                    double conRing1 = _calibrationDataC[14];
+                    double conRing11 = _calibrationDataC[15];
+
+                    double conLittle3 = _calibrationDataC[16];
+                    double conLittle2 = _calibrationDataC[17];
+                    double conLittle1 = _calibrationDataC[18];
+                    double conLittle11 = _calibrationDataC[19];
+                    double conLittle22 = _calibrationDataC[22];
+
+                    packetSkeleton.skeletonQuaternion.indexFinger.proximal = eulerToQuaternion(conIndex22, conIndex11, conIndex1);
+                    packetSkeleton.skeletonQuaternion.indexFinger.intermediate = eulerToQuaternion(0, 0, conIndex2);
+                    packetSkeleton.skeletonQuaternion.indexFinger.distal = eulerToQuaternion(0, 0, conIndex3);
+
+                    packetSkeleton.skeletonQuaternion.middleFinger.proximal = eulerToQuaternion(0, conMiddle11, conMiddle1);
+                    packetSkeleton.skeletonQuaternion.middleFinger.intermediate = eulerToQuaternion(0, 0, conMiddle2);
+                    packetSkeleton.skeletonQuaternion.middleFinger.distal = eulerToQuaternion(0, 0, conMiddle3);
+
+                    packetSkeleton.skeletonQuaternion.ringFinger.proximal = eulerToQuaternion(0, conRing11, conRing1);
+                    packetSkeleton.skeletonQuaternion.ringFinger.intermediate = eulerToQuaternion(0, 0, conRing2);
+                    packetSkeleton.skeletonQuaternion.ringFinger.distal = eulerToQuaternion(0, 0, conRing3);
+
+                    packetSkeleton.skeletonQuaternion.littleFinger.proximal = eulerToQuaternion(conLittle22, conLittle11, conLittle1);
+                    packetSkeleton.skeletonQuaternion.littleFinger.intermediate = eulerToQuaternion(0, 0, conLittle2);
+                    packetSkeleton.skeletonQuaternion.littleFinger.distal = eulerToQuaternion(0, 0, conLittle3);
+
+                    packetSkeleton.skeletonQuaternion.thumbFinger.distal = eulerToQuaternion(conThumb22, conThumb11, conThumb1);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.intermediate = eulerToQuaternion(0, 0, conThumb2);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.proximal = eulerToQuaternion(0,0 , conThumb3);
+
                     callListenCallback(packetSkeleton);
                 }
                 {
