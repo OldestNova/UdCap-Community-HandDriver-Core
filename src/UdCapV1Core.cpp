@@ -144,6 +144,7 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
                 eventCondition.wait_for(lk, std::chrono::milliseconds(1000));
                 continue;
             }
+            std::lock_guard guard(callbackMutex);
             UdCapV1MCUPacket packet = packetQueue.front();
             packetQueue.pop();
             std::shared_ptr<UdCapV1MCUPacket> packetPtr = std::make_shared<UdCapV1MCUPacket>(packet);
