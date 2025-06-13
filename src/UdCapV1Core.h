@@ -302,7 +302,7 @@ public:
 private:
     void parsePacket(const std::vector<uint8_t> &);
 
-    void callListenCallback(const UdCapV1MCUPacket &packet);
+    void callListenCallback(UdCapV1MCUPacket packet);
     std::atomic_uint32_t callbackFd = 0;
     std::thread eventLoop;
     std::atomic_bool eventLoopRunning;
@@ -313,7 +313,7 @@ private:
     std::shared_ptr<PortAccessor> portAccessor;
     std::string udCapSerial;
     volatile UdTarget target = UD_TARGET_UNKNOWN;
-    std::map<uint32_t, std::function<void(const UdCapV1MCUPacket &)> > listenCallbacks;
+    std::map<uint32_t, std::function<void(UdCapV1MCUPacket)> > listenCallbacks;
     std::mutex callbackMutex;
     uint16_t lastBattery = 0;
     bool isEnterprise = false;

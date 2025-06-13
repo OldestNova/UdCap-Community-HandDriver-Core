@@ -183,7 +183,7 @@ std::function<void()> UdCapV1Core::listen(const std::function<void(UdCapV1MCUPac
     };
 }
 
-void UdCapV1Core::callListenCallback(const UdCapV1MCUPacket &packet) {
+void UdCapV1Core::callListenCallback(UdCapV1MCUPacket packet) {
     std::lock_guard guard(callbackMutex);
     packetQueue.push(packet);
     eventCondition.notify_all();
