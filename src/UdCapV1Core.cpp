@@ -675,6 +675,37 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                             powerBtnPressed = true;
                         }
                     }
+                    float triggerFinger = abs(_calibrationDataC[5]);
+                    if (triggerFinger > triggerMin * 100.0f && triggerFinger < triggerMax * 100.0f) {
+                        float value = (triggerFinger - triggerMin * 100.0f) / (triggerMax * 100.0f - triggerMin * 100.0f);
+                        packetInputBtn.button.trigger = value;
+                        packetInputBtn.button.btnTrigger = false;
+                    } else if (triggerFinger >= triggerMax * 100.0f) {
+                        packetInputBtn.button.trigger = 1.0f;
+                        packetInputBtn.button.btnTrigger = true;
+                    } else if (triggerFinger <= triggerMin * 100.0f) {
+                        packetInputBtn.button.trigger = 0.0f;
+                        packetInputBtn.button.btnTrigger = false;
+                    }
+                    float gripFinger1 = abs(_calibrationDataC[9]);
+                    float gripFinger2 = abs(_calibrationDataC[13]);
+                    if (gripFinger1 >= gripMin * 100.0f && gripFinger2 >= gripMin * 100.0f) {
+                        float value = (gripFinger1 >= gripMax * 100.0f || gripFinger2 >= gripMax * 100.0f) ? 1.0f : std::max((gripFinger1 - gripMin * 100.0f) / (gripMax * 100.0f - gripMin * 100.0f), (gripFinger2 - gripMin * 100.0f) / (gripMax * 100.0f - gripMin * 100.0f));
+                        packetInputBtn.button.grip = value;
+                        packetInputBtn.button.btnGrip = true;
+                    } else {
+                        packetInputBtn.button.grip = 0.0f;
+                        packetInputBtn.button.btnGrip = false;
+                    }
+                    float trackpadFinger = abs(_calibrationDataC[0]);
+                    if (trackpadFinger >= trackpadMin * 60.0f) {
+                        float value = trackpadFinger >= trackpadMax * 60.0f ? 1.0f : (trackpadFinger - trackpadMin * 60.0f) / (trackpadMax * 60.0f - trackpadMin * 60.0f);
+                        packetInputBtn.button.trackpad = value;
+                        packetInputBtn.button.btnTrackpad = true;
+                    } else {
+                        packetInputBtn.button.trackpad = 0.0f;
+                        packetInputBtn.button.btnTrackpad = false;
+                    }
                     callListenCallback(packetInputBtn);
                 }
             }
@@ -721,11 +752,47 @@ void UdCapV1Core::mcuGetSerialNum() {
 
 void UdCapV1Core::mcuSendVibration(int index, float second, int strength) {
     if (index != 1 && index != 2) return;
-    float rSecond = ((second <= 0.04) ? 0.04 : ((second > 2.5) ? 2.5 : second));
+    float rSecond = ((second <= 0.04f) ? 0.04f : ((second > 2.5f) ? 2.5f : second));
     int rStrength = ((strength < 4) ? 4 : ((strength > 10) ? 10 : strength));
     sendCommand(1, CommandType::CMD_VIBRATION, { (uint8_t)index, 0, (uint8_t)(rSecond * 100.0), (uint8_t)rStrength });
 }
 
+void UdCapV1Core::setTriggerButtonMin(float value) {
+    this->triggerMin = value;
+}
+void UdCapV1Core::setTriggerButtonMax(float value) {
+    this->triggerMax = value;
+}
+float UdCapV1Core::getTriggerButtonMin() const {
+    return triggerMin;
+}
+float UdCapV1Core::getTriggerButtonMax() const {
+    return triggerMax;
+}
+void UdCapV1Core::setGripButtonMin(float value) {
+    this->gripMin = value;
+}
+void UdCapV1Core::setGripButtonMax(float value) {
+    this->gripMax = value;
+}
+float UdCapV1Core::getGripButtonMin() const {
+    return gripMin;
+}
+float UdCapV1Core::getGripButtonMax() const {
+    return gripMax;
+}
+void UdCapV1Core::setTrackpadButtonMin(float value) {
+    this->trackpadMin = value;
+}
+void UdCapV1Core::setTrackpadButtonMax(float value) {
+    this->trackpadMax = value;
+}
+float UdCapV1Core::getTrackpadButtonMin() const {
+    return trackpadMin;
+}
+float UdCapV1Core::getTrackpadButtonMax() const {
+    return trackpadMax;
+}
 
 std::string UdCapV1Core::fromUdStateToString(UdState state) {
     switch (state) {

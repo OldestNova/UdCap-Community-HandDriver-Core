@@ -58,6 +58,12 @@ struct UdCapV1ButtonData {
     bool btnMenu;
     bool btnJoyStick;
     bool btnPower;
+    bool btnTrigger;
+    bool btnGrip;
+    bool btnTrackpad;
+    float trigger;
+    float grip;
+    float trackpad;
 };
 
 enum UdTarget {
@@ -270,6 +276,20 @@ public:
 
     UdCapV1JoystickCaliStat getJoystickCalibrationStatus() const;
 
+    // Virtual Buttons
+    void setTriggerButtonMin(float value);
+    void setTriggerButtonMax(float value);
+    float getTriggerButtonMin() const;
+    float getTriggerButtonMax() const;
+    void setGripButtonMin(float value);
+    void setGripButtonMax(float value);
+    float getGripButtonMin() const;
+    float getGripButtonMax() const;
+    void setTrackpadButtonMin(float value);
+    void setTrackpadButtonMax(float value);
+    float getTrackpadButtonMin() const;
+    float getTrackpadButtonMax() const;
+
     // TODO
     bool loadPref();
 
@@ -311,6 +331,12 @@ private:
     float yMaxData = 3750.0;
     float yMinData = 620.0;
     float deadZone = 0.15;
+    float triggerMax = 0.5f;
+    float triggerMin = 0.25f;
+    float gripMax = 1.0f;
+    float gripMin = 0.5f;
+    float trackpadMax = 1.0f;
+    float trackpadMin = 0.5f;
     bool thumbOn = true;
     bool isSettingChannel = false;
     float thumbFix[3] = { 0.1f, 0.3f, 1.2f };

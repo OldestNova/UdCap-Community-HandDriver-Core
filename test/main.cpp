@@ -53,7 +53,7 @@ int main() {
         usbEnum.refresh(USB_ENUMERATE_REFRESH_SERIAL);
         usbEnum.printDevices();
         std::vector<SerialDevice> devices = usbEnum.findPorts([](const SerialDevice &device) {
-            return device.vid == 0x1A86 && (device.pid == 0x7523 || device.pid == 0x0001);
+            return device.vid == 0x1A86 && device.pid == 0x7523;
         });
         for (const auto &device: devices) {
             std::cout << "Found device: " << device.portName << std::endl;
@@ -112,11 +112,11 @@ int main() {
                                                                      : "Unknown")) << std::endl;
                             std::cout << "    Type: " << (data.isEnterprise ? "Enterprise" : "Client") << std::endl;
                         } else if (data.commandType == CMD_DATA) {
-                            // std::cout << "  Angle: ";
-                            // for (const auto &angle: data.angle) {
-                            //     std::cout << std::dec << angle << " ";
-                            // }
-                            // std::cout << std::endl;
+                             std::cout << "  Angle: ";
+                             for (const auto &angle: data.angle) {
+                                 std::cout << std::dec << angle << " ";
+                             }
+                             std::cout << std::endl;
                         } else if (data.commandType == CMD_GET_CHANNEL) {
                             std::cout << "    Channel: " << static_cast<unsigned>(data.channel) << std::endl;
                         } else if (data.commandType == CMD_READY) {
@@ -125,19 +125,23 @@ int main() {
                                 // core.mcuSendVibration(1, 2, 10);
                             }
                         } else if (data.commandType == CMD_ANGLE) {
-//                            std::vector<double> angles = data.result;
-//                            std::cout << "Angles: ";
-//                            for (int i = 0; i < angles.size(); i++) {
-//                                std::cout << angles[i] << ", ";
-//                            }
-//                            std::cout << std::endl;
+                            std::vector<double> angles = data.result;
+                            std::cout << "Angles: ";
+                            for (int i = 0; i < angles.size(); i++) {
+                                std::cout << angles[i] << ", ";
+                            }
+                            std::cout << std::endl;
                         } else if (data.commandType == CMD_INPUT_JOYSTICK) {
-//                                std::cout << "Input joystick. X: " << data.joystickData.joyX << " Y: " << data.
-//                                        joystickData.joyY << std::endl;
+                                std::cout << "Input joystick. X: " << data.joystickData.joyX << " Y: " << data.
+                                        joystickData.joyY << std::endl;
                         } else if (data.commandType == CMD_INPUT_BUTTON) {
-//                                std::cout << "Input Button. A: " << data.button.btnA << " B: " << data.button.btnB <<
-//                                        " Menu: " << data.button.btnMenu << " JoyStick: " << data.button.btnJoyStick <<
-//                                        " PWR: " << data.button.btnPower << std::endl;
+                                std::cout << "Input Button. A: " << data.button.btnA << " B: " << data.button.btnB <<
+                                        " Menu: " << data.button.btnMenu << " JoyStick: " << data.button.btnJoyStick <<
+                                        " PWR: " << data.button.btnPower <<
+                                        " Trigger: " << data.button.btnTrigger << "(" << data.button.trigger << ")" <<
+                                        " Grip: " << data.button.btnGrip << "(" << data.button.grip << ")" <<
+                                        " Trackpad: " << data.button.btnTrackpad << "(" << data.button.trackpad << ")" <<
+                                        std::endl;
                         } else if (data.commandType == CMD_SKELETON_QUATERNION) {
                             std::cout << "Skeleton Quaternion: " << std::endl;
 
