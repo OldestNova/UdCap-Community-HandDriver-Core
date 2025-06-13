@@ -146,8 +146,9 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
             }
             UdCapV1MCUPacket packet = packetQueue.front();
             packetQueue.pop();
+            std::shared_ptr<UdCapV1MCUPacket> packetPtr = std::make_shared<UdCapV1MCUPacket>(packet);
             for (const auto &pair: listenCallbacks) {
-                pair.second(packet);
+                pair.second(packetPtr);
             }
         }
     });
@@ -173,7 +174,7 @@ UdCapV1Core::~UdCapV1Core() {
     this->eventLoop.join();
 }
 
-std::function<void()> UdCapV1Core::listen(const std::function<void(UdCapV1MCUPacket)> &callback) {
+std::function<void()> UdCapV1Core::listen(const std::function<void(std::shared_ptr<UdCapV1MCUPacket>)> &callback) {
     std::lock_guard guard(callbackMutex);
     uint32_t fd = callbackFd.fetch_add(1);
     listenCallbacks[fd] = callback;
@@ -344,6 +345,19 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
         auto deData = decodeXOR(data);
         packet.fwVersion = std::string(deData.begin(), deData.end());
         callListenCallback(packet);
+    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_PAIRING) {
+        UdCapV1MCUPacket packet{};
+        packet.address = packetBuffer[2];
+        packet.commandType = CommandType::CMD_PAIRING;
+        auto deData = decodeXOR(data);
+        int pairResult = deData[0];
+        if (pairResult == 10) {
+            packet.pairing = true;
+            callListenCallback(packet);
+        } else if (pairResult == 11) {
+            packet.pairing = false;
+            callListenCallback(packet);
+        }
     } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_DATA) {
         UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
@@ -751,6 +765,14 @@ void UdCapV1Core::mcuStartData() {
 
 void UdCapV1Core::mcuGetSerialNum() {
     sendCommand(1, CommandType::CMD_SERIAL, {1});
+}
+
+void UdCapV1Core::mcuStartPairing() {
+    sendCommand(1, CommandType::CMD_PAIRING, {1});
+}
+
+void UdCapV1Core::mcuStopPairing() {
+    sendCommand(1, CommandType::CMD_PAIRING, {2});
 }
 
 void UdCapV1Core::mcuSendVibration(int index, float second, int strength) {

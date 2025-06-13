@@ -44,6 +44,7 @@ enum CommandType {
     CMD_GET_CHANNEL = 9,
     CMD_SET_CHANNEL_DONE = 10,
     CMD_FW_VERSION = 11,
+    CMD_PAIRING = 12,
     CMD_STOP_DATA = 160
 };
 
@@ -116,6 +117,7 @@ struct UdCapV1MCUPacket {
     UdCapV1JoystickData joystickData {};
     UdCapV1ButtonData button {};
     HandQuaternion skeletonQuaternion {};
+    bool pairing;
 };
 
 class UdCapHandV1PacketRealignmentHelper : public PacketRealignmentHelper {
@@ -236,7 +238,7 @@ public:
 
     void sendCommand(uint8_t humanAddress, CommandType commandType, const std::vector<uint8_t> &data);
 
-    std::function<void()> listen(const std::function<void(UdCapV1MCUPacket)> &callback);
+    std::function<void()> listen(const std::function<void(std::shared_ptr<UdCapV1MCUPacket>)> &callback);
 
     static std::string fromUdStateToString(UdState state);
 
@@ -257,6 +259,10 @@ public:
     void mcuSetChannel(uint8_t channel);
 
     void mcuReset();
+
+    void mcuStartPairing();
+
+    void mcuStopPairing();
 
     void mcuSendVibration(int index, float second, int strength);
 
@@ -313,7 +319,7 @@ private:
     std::shared_ptr<PortAccessor> portAccessor;
     std::string udCapSerial;
     volatile UdTarget target = UD_TARGET_UNKNOWN;
-    std::map<uint32_t, std::function<void(UdCapV1MCUPacket)> > listenCallbacks;
+    std::map<uint32_t, std::function<void(std::shared_ptr<UdCapV1MCUPacket>)> > listenCallbacks;
     std::mutex callbackMutex;
     uint16_t lastBattery = 0;
     bool isEnterprise = false;
