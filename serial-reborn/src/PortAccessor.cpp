@@ -19,6 +19,7 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
                 continue;
             }
             try {
+                std::lock_guard lk(queueMutex);
                 ReceiveDataItem item = rxQueue.front();
                 std::vector<uint8_t> packet = item.byteData;
                 rxQueue.pop();
