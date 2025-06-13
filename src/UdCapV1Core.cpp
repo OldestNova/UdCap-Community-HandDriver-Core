@@ -144,7 +144,7 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
                 eventCondition.wait_for(lk, std::chrono::milliseconds(1000));
                 continue;
             }
-            std::unique_lock guard(callbackMutex);
+            std::lock_guard guard(callbackMutex);
             UdCapV1MCUPacket packet = packetQueue.front();
             packetQueue.pop();
             std::shared_ptr<UdCapV1MCUPacket> packetPtr = std::make_shared<UdCapV1MCUPacket>(packet);
@@ -176,17 +176,17 @@ UdCapV1Core::~UdCapV1Core() {
 }
 
 std::function<void()> UdCapV1Core::listen(const std::function<void(std::shared_ptr<UdCapV1MCUPacket>)> &callback) {
-    std::unique_lock guard(callbackMutex);
+    std::lock_guard guard(callbackMutex);
     uint32_t fd = callbackFd.fetch_add(1);
     listenCallbacks[fd] = callback;
     return [this, fd]() {
-        std::unique_lock guard(callbackMutex);
+        std::lock_guard guard(callbackMutex);
         listenCallbacks.erase(fd);
     };
 }
 
 void UdCapV1Core::callListenCallback(UdCapV1MCUPacket packet) {
-    std::unique_lock guard(callbackMutex);
+    std::lock_guard guard(callbackMutex);
     packetQueue.push(packet);
     eventCondition.notify_all();
 }

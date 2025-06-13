@@ -320,7 +320,7 @@ private:
     std::string udCapSerial;
     volatile UdTarget target = UD_TARGET_UNKNOWN;
     std::map<uint32_t, std::function<void(std::shared_ptr<UdCapV1MCUPacket>)> > listenCallbacks;
-    std::mutex callbackMutex;
+    std::recursive_mutex callbackMutex;
     uint16_t lastBattery = 0;
     bool isEnterprise = false;
     volatile UdState udState = UD_INIT_STATE_INIT;
