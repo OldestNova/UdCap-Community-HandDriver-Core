@@ -88,6 +88,7 @@ private:
     size_t readSize = 64;
     size_t timeout = 500;
     bool isOpenFlag = false;
+    std::mutex queueMutex;
     std::thread continuousReadThread;
     std::mutex callbackMutex;
     std::atomic_bool continuousReadRunning = false;

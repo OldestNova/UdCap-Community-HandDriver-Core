@@ -60,6 +60,7 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
                 continue;
             }
             try {
+                std::lock_guard lk(queueMutex);
                 SendDataItem packet = txQueue.front();
                 txQueue.pop();
                 uint16_t delay = txEventLoopSendDelay.load();
@@ -373,6 +374,7 @@ void PortAccessor::startContinuousRead() {
                     }
 
                     if (!onceRawDataCallbacks.empty()) {
+                        std::lock_guard lk(queueMutex);
                         ReceiveDataItem item{};
                         item.isOnceRaw = true;
                         item.byteData = data;
@@ -389,6 +391,7 @@ void PortAccessor::startContinuousRead() {
                                 if (packet.empty()) {
                                     continue;
                                 }
+                                std::lock_guard lk(queueMutex);
                                 ReceiveDataItem item{};
                                 item.isOnceRaw = false;
                                 item.byteData = packet;
@@ -397,6 +400,7 @@ void PortAccessor::startContinuousRead() {
                             }
                         }
                     } else {
+                        std::lock_guard lk(queueMutex);
                         ReceiveDataItem item{};
                         item.isOnceRaw = false;
                         item.byteData = data;
