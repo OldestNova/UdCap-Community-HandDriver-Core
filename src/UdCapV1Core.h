@@ -236,7 +236,7 @@ public:
 
     void sendCommand(uint8_t humanAddress, CommandType commandType, const std::vector<uint8_t> &data);
 
-    std::function<void()> listen(const std::function<void(const UdCapV1MCUPacket &)> &callback);
+    std::function<void()> listen(const std::function<void(UdCapV1MCUPacket)> &callback);
 
     static std::string fromUdStateToString(UdState state);
 

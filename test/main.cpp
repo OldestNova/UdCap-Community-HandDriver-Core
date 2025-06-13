@@ -71,7 +71,7 @@ int main() {
                     std::cout << "  Probe successful. This is a UdCap Receiver with SN: " << prober.getUDCapSerial() <<
                             std::endl;
                     std::shared_ptr<UdCapV1Core> core = std::make_shared<UdCapV1Core>(portAccessor);
-                    auto unlisten = core->listen([&core](const UdCapV1MCUPacket &data) {
+                    auto unlisten = core->listen([&core](UdCapV1MCUPacket data) {
                         if (data.commandType == CMD_LINK_STATE) {
                             std::cout << "  Link State: " << UdCapV1Core::fromUdStateToString(data.udState) <<
                                     std::endl;

@@ -173,7 +173,7 @@ UdCapV1Core::~UdCapV1Core() {
     this->eventLoop.join();
 }
 
-std::function<void()> UdCapV1Core::listen(const std::function<void(const UdCapV1MCUPacket &)> &callback) {
+std::function<void()> UdCapV1Core::listen(const std::function<void(UdCapV1MCUPacket)> &callback) {
     std::lock_guard guard(callbackMutex);
     uint32_t fd = callbackFd.fetch_add(1);
     listenCallbacks[fd] = callback;
