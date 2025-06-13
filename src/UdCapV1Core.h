@@ -111,8 +111,8 @@ struct UdCapV1MCUPacket {
     std::string deviceSerialNum;
     bool isReady;
     bool isEnterprise;
-    std::vector<int16_t> angle;
-    std::vector<double> result;
+    std::array<int16_t, 19> angle;
+    std::array<double, 28> result;
     UdCapV1JoystickData joystickData {};
     UdCapV1ButtonData button {};
     HandQuaternion skeletonQuaternion {};

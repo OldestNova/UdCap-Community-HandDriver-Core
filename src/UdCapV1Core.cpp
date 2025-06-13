@@ -350,10 +350,13 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
         packet.commandType = CommandType::CMD_DATA;
         auto deData = decodeXOR(data);
         // std::vector<uint8_t> deData to std::vector<int16_t>
-        std::vector<int16_t> iData;
+        std::array<int16_t, 19> iData;
         for (size_t i = 0; i < deData.size(); i += 2) {
             auto value = (int16_t) ((deData[i] << 8) | deData[i + 1]);
-            iData.push_back(value);
+            if (i / 2 >= iData.size()) {
+                continue; // Prevent out of bounds access
+            }
+            iData[i / 2] = value;
         }
         packet.angle = iData;
         callListenCallback(packet);
@@ -526,7 +529,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                 }
             }
 
-            double _calibrationDataC[28]{};
+            std::array<double, 28> _calibrationDataC{};
             for (int n = 0; n < list.size(); n++) {
                 _calibrationDataC[n] = list[n];
             }
@@ -540,7 +543,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                     UdCapV1MCUPacket dataPacket{};
                     dataPacket.address = packetBuffer[2];
                     dataPacket.commandType = CommandType::CMD_ANGLE;
-                    dataPacket.result = std::vector<double>(_calibrationDataC, _calibrationDataC + std::size(_calibrationDataC));
+                    dataPacket.result = _calibrationDataC;
                     callListenCallback(dataPacket);
                 }
                 {
