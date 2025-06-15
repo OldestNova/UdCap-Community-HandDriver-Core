@@ -161,8 +161,8 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
             UdCapHandV1PacketRealignmentHelper>();
         this->portAccessor->setPacketRealignmentHelper(std::move(packetRealignmentHelper));
     }
-    this->unlistenPortCallback = this->portAccessor->addDataCallback([&](const std::vector<uint8_t> &data) {
-        parsePacket(data);
+    this->unlistenPortCallback = this->portAccessor->addDataCallback([this](std::shared_ptr<std::vector<uint8_t>> data) {
+        parsePacket(*data);
     });
     this->portAccessor->startContinuousRead();
 }

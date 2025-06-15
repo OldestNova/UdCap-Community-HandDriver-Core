@@ -71,11 +71,11 @@ public:
 
     void setPacketRealignmentHelper(std::unique_ptr<PacketRealignmentHelper> helper);
     bool hasPacketRealignmentHelper() const;
-    std::function<void()> addDataCallback(const std::function<void(const std::vector<uint8_t> &)> &);
+    std::function<void()> addDataCallback(std::function<void(std::shared_ptr<std::vector<uint8_t>>)>);
     void startContinuousRead();
     void stopContinuousRead();
     void setWriteDelay(const uint64_t delay);
-    std::function<void()> addOnceRawDataCallback(const std::function<bool(const std::vector<uint8_t> &)> &);
+    std::function<void()> addOnceRawDataCallback(std::function<bool(std::shared_ptr<std::vector<uint8_t>>)>);
     void setPrintRxTxToStdOut(bool enable);
 private:
     bool printRxTxToStdOut = false;
@@ -94,8 +94,8 @@ private:
     std::atomic_bool continuousReadRunning = false;
     std::atomic_int32_t continuousReadStartCount = 0;
     std::unique_ptr<PacketRealignmentHelper> packetRealignmentHelper;
-    std::map<uint32_t, std::function<void(const std::vector<uint8_t> &)>> dataCallbacks;
-    std::map<uint32_t, std::function<bool(const std::vector<uint8_t> &)>> onceRawDataCallbacks;
+    std::map<uint32_t, std::function<void(std::shared_ptr<std::vector<uint8_t>>)>> dataCallbacks;
+    std::map<uint32_t, std::function<bool(std::shared_ptr<std::vector<uint8_t>>)>> onceRawDataCallbacks;
 
     // EventLoop
     std::atomic_bool eventLoopRunning = true;

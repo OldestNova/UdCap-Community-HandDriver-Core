@@ -22,12 +22,13 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
                 std::lock_guard lk(queueMutex);
                 ReceiveDataItem item = rxQueue.front();
                 std::vector<uint8_t> packet = item.byteData;
+                std::shared_ptr sharedPacket = std::make_shared<std::vector<uint8_t>>(packet);
                 rxQueue.pop();
                 std::lock_guard guard(callbackMutex);
                 if (item.isOnceRaw) {
                     std::vector<uint32_t> removable;
                     for (auto &pair: this->onceRawDataCallbacks) {
-                        if (pair.second(packet)) {
+                        if (pair.second(sharedPacket)) {
                             removable.push_back(pair.first);
                         }
                     }
@@ -43,7 +44,7 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
                         std::cout << std::endl;
                     }
                     for (auto &pair: this->dataCallbacks) {
-                        pair.second(packet);
+                        pair.second(sharedPacket);
                     }
                 }
             } catch (std::exception &e) {
@@ -417,7 +418,7 @@ void PortAccessor::startContinuousRead() {
     }
 }
 
-std::function<void()> PortAccessor::addDataCallback(const std::function<void(const std::vector<uint8_t> &)> &callback) {
+std::function<void()> PortAccessor::addDataCallback(std::function<void(std::shared_ptr<std::vector<uint8_t>>)> callback) {
     std::lock_guard guard(callbackMutex);
     uint32_t fd = callbackFd.fetch_add(1);
     dataCallbacks[fd] = callback;
@@ -428,7 +429,7 @@ std::function<void()> PortAccessor::addDataCallback(const std::function<void(con
 }
 
 std::function<void()> PortAccessor::addOnceRawDataCallback(
-    const std::function<bool(const std::vector<uint8_t> &)> &callback) {
+    std::function<bool(std::shared_ptr<std::vector<uint8_t>>)> callback) {
     std::lock_guard guard(callbackMutex);
     uint32_t fd = callbackFd.fetch_add(1);
     onceRawDataCallbacks[fd] = callback;

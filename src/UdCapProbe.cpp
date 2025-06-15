@@ -21,8 +21,8 @@ UdCapProbeType UdCapProbe::probe() {
         std::mutex mutex;
         std::condition_variable condition;
         std::string uds = "";
-        unlisten = portAccessor->addOnceRawDataCallback([this, &uds, &condition](const std::vector<uint8_t>& data) {
-            for (uint8_t b: data) {
+        unlisten = portAccessor->addOnceRawDataCallback([this, &uds, &condition](std::shared_ptr<std::vector<uint8_t>> data) {
+            for (uint8_t b: *data) {
                 if (this->stateMachine == UDCAP_PROBE_STATE_NONE) {
                     if (static_cast<char>(b) == 'U') {
                         this->stateMachine = UDCAP_PROBE_STATE_GET_HEADER_U;
