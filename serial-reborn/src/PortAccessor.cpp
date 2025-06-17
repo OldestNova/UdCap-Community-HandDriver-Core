@@ -20,6 +20,9 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
             }
             try {
                 std::lock_guard lk(queueMutex);
+                if (rxQueue.empty()) {
+                    continue;
+                }
                 ReceiveDataItem item = rxQueue.front();
                 std::vector<uint8_t> packet = item.byteData;
                 std::shared_ptr sharedPacket = std::make_shared<std::vector<uint8_t>>(packet);
@@ -63,6 +66,9 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
             }
             try {
                 std::lock_guard lk(queueMutex);
+                if (txQueue.empty()) {
+                    continue;
+                }
                 SendDataItem packet = txQueue.front();
                 txQueue.pop();
                 uint16_t delay = txEventLoopSendDelay.load();
