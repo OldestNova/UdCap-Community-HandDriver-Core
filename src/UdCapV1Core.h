@@ -297,6 +297,7 @@ public:
     float getTrackpadButtonMax() const;
 
     // TODO
+
     bool loadPref();
 
     bool loadPref(std::string path);

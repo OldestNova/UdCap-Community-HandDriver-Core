@@ -3,6 +3,7 @@
 //
 
 #include "UdCapV1Core.h"
+#include "CorePref.h"
 #include <AR1Linear.hpp>
 #include <filesystem>
 #include <iostream>
@@ -1115,8 +1116,7 @@ void UdCapV1Core::mcuReset() {
 }
 
 bool UdCapV1Core::loadPref() {
-    std::filesystem::path prefDir("prefs");
-    std::filesystem::path dirPath = std::filesystem::relative(std::filesystem::current_path(), prefDir);
+    std::filesystem::path dirPath = CorePref::getInstance().getPrefPath();
     if (!std::filesystem::exists(dirPath)) {
         if (!std::filesystem::create_directory(dirPath)) {
             return false;
@@ -1145,8 +1145,7 @@ bool UdCapV1Core::loadPref(std::string path) {
 }
 
 bool UdCapV1Core::savePref() {
-    std::filesystem::path prefDir("prefs");
-    std::filesystem::path dirPath = std::filesystem::relative(std::filesystem::current_path(), prefDir);
+    std::filesystem::path dirPath = CorePref::getInstance().getPrefPath();
     if (!std::filesystem::exists(dirPath)) {
         if (!std::filesystem::create_directory(dirPath)) {
             return false;
