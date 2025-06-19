@@ -1115,6 +1115,10 @@ void UdCapV1Core::mcuReset() {
     sendCommand(1, (CommandType)10, { 1 });
 }
 
+void UdCapV1Core::mcuGetFirmwareVersion() {
+    sendCommand(1, CommandType::CMD_FW_VERSION, { 1 });
+}
+
 bool UdCapV1Core::loadPref() {
     std::filesystem::path dirPath = CorePref::getInstance().getPrefPath();
     if (!std::filesystem::exists(dirPath)) {

@@ -264,6 +264,8 @@ public:
 
     void mcuStopPairing();
 
+    void mcuGetFirmwareVersion();
+
     void mcuSendVibration(int index, float second, int strength);
 
     void runCalibration(UdCapV1DeviceCaliType type);
