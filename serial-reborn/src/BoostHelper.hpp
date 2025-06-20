@@ -35,6 +35,17 @@ public:
         return transfered;
     }
 
+    template<typename Buffer, typename Duration, typename ... ErrorCode>
+    size_t read_some(Buffer const& buf, Duration d, ErrorCode& ... ec) {
+        static_assert(sizeof...(ec) <= 1, "only 0 or 1 error code allowed");
+        size_t transfered = 0;
+        with_timeout(d, [&buf, &transfered](auto& socket, auto& ec)
+        {
+            socket.async_read_some(buf, [&ec, &transfered](auto err, auto transfer){ ec = err; transfered = transfer; });
+        }, ec...);
+        return transfered;
+    }
+
     template<typename Duration, typename MatchCriteria, typename ... ErrorCode>
     size_t read_until(aio::streambuf& sb, MatchCriteria match, Duration d, ErrorCode& ... ec) {
         static_assert(sizeof...(ec) <= 1, "only 0 or 1 error code allowed");

@@ -266,7 +266,7 @@ std::vector<uint8_t> PortAccessor::readData() {
             uint8_t read = 4;
             while (read > 0) {
                 try {
-                    size_t transfered = serialPort->read(boost::asio::buffer(buffer),
+                    size_t transfered = serialPort->read_some(boost::asio::buffer(buffer),
                                                          std::chrono::milliseconds(this->timeout));
                     if (transfered == 0) {
                         read = read - 1;
@@ -380,7 +380,7 @@ void PortAccessor::startContinuousRead() {
                             size_t size = hid_read_timeout(hidDevice, data.data(), this->readSize, (int) this->timeout);
                             data.resize(size);
                         } else {
-                            size_t size = this->serialPort->read(boost::asio::buffer(data),
+                            size_t size = this->serialPort->read_some(boost::asio::buffer(data),
                                                                  std::chrono::milliseconds(this->timeout));
                             data.resize(size);
                         }
