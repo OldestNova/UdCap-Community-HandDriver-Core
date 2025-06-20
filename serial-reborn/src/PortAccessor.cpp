@@ -102,8 +102,8 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
 
 PortAccessor::~PortAccessor() {
     eventLoopRunning.store(false);
-    if (continuousReadRunning.load()) {
-        continuousReadRunning.store(false);
+    if (continuousReadRunning) {
+        continuousReadRunning = false;
         if (continuousReadThread.joinable()) {
             continuousReadThread.join();
         }
@@ -255,7 +255,7 @@ void PortAccessor::setTimeout(size_t timeout) {
 
 std::vector<uint8_t> PortAccessor::readData() {
     if (isOpen()) {
-        if (continuousReadRunning.load()) {
+        if (continuousReadRunning) {
             throw std::runtime_error("Continuous read is running, cannot read data");
         }
         std::vector<uint8_t> buffer(readSize);
@@ -336,7 +336,7 @@ void PortAccessor::stopContinuousRead() {
             return;
         }
         continuousReadStartCount.fetch_sub(1);
-        continuousReadRunning.store(false);
+        continuousReadRunning = false;
         if (continuousReadThread.joinable()) {
             continuousReadThread.join();
         }
@@ -347,14 +347,14 @@ void PortAccessor::stopContinuousRead() {
 }
 
 void PortAccessor::setPacketRealignmentHelper(std::unique_ptr<PacketRealignmentHelper> helper) {
-    if (continuousReadRunning.load()) {
+    if (continuousReadRunning) {
         throw std::runtime_error("Cannot set packet realignment helper while continuous read is running");
     }
     packetRealignmentHelper = std::move(helper);
 }
 
 std::unique_ptr<PacketRealignmentHelper> PortAccessor::popPacketRealignmentHelper() {
-    if (continuousReadRunning.load()) {
+    if (continuousReadRunning) {
         throw std::runtime_error("Cannot pop packet realignment helper while continuous read is running");
     }
     if (!packetRealignmentHelper) {
@@ -370,9 +370,9 @@ void PortAccessor::startContinuousRead() {
             return;
         }
         continuousReadStartCount.fetch_add(1);
-        continuousReadRunning.store(true);
+        continuousReadRunning = true;
         continuousReadThread = std::thread([this] {
-            while (continuousReadRunning.load()) {
+            while (continuousReadRunning) {
                 try {
                     std::vector<uint8_t> data(this->readSize);
                     try {

@@ -92,7 +92,7 @@ private:
     std::mutex queueMutex;
     std::thread continuousReadThread;
     std::mutex callbackMutex;
-    std::atomic_bool continuousReadRunning = false;
+    bool continuousReadRunning = false;
     std::atomic_int32_t continuousReadStartCount = 0;
     std::unique_ptr<PacketRealignmentHelper> packetRealignmentHelper;
     std::map<uint32_t, std::function<void(std::shared_ptr<std::vector<uint8_t>>)>> dataCallbacks;
