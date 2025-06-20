@@ -19,6 +19,19 @@ enum UdCapProbeStateMachine {
     UDCAP_PROBE_STATE_GET_HEADER_UD
 };
 
+class UdCapProbePacketRealignmentHelper : public PacketRealignmentHelper {
+public:
+    UdCapProbePacketRealignmentHelper() = default;
+
+    ~UdCapProbePacketRealignmentHelper() override = default;
+
+    std::vector<std::vector<uint8_t> > processPacket(const std::vector<uint8_t> &data) override;
+
+private:
+    std::vector<uint8_t> packetBuffer;
+    volatile UdCapProbeStateMachine stateMachine = UDCAP_PROBE_STATE_NONE;
+};
+
 class UdCapProbe {
 public:
     explicit UdCapProbe(std::shared_ptr<PortAccessor> portAccessor);

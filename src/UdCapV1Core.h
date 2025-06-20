@@ -130,7 +130,6 @@ public:
 
 private:
     std::vector<uint8_t> packetBuffer;
-    std::vector<std::vector<uint8_t> > processedPacket;
     uint32_t remainedLength = 0;
     volatile UdCapV1StateMachine stateMachine = NOOP;
 };

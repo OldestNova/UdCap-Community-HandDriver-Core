@@ -71,6 +71,7 @@ public:
 
     void setPacketRealignmentHelper(std::unique_ptr<PacketRealignmentHelper> helper);
     bool hasPacketRealignmentHelper() const;
+    std::unique_ptr<PacketRealignmentHelper> popPacketRealignmentHelper();
     std::function<void()> addDataCallback(std::function<void(std::shared_ptr<std::vector<uint8_t>>)>);
     void startContinuousRead();
     void stopContinuousRead();

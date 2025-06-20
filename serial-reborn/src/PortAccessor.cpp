@@ -353,6 +353,16 @@ void PortAccessor::setPacketRealignmentHelper(std::unique_ptr<PacketRealignmentH
     packetRealignmentHelper = std::move(helper);
 }
 
+std::unique_ptr<PacketRealignmentHelper> PortAccessor::popPacketRealignmentHelper() {
+    if (continuousReadRunning.load()) {
+        throw std::runtime_error("Cannot pop packet realignment helper while continuous read is running");
+    }
+    if (!packetRealignmentHelper) {
+        return nullptr;
+    }
+    return std::move(packetRealignmentHelper);
+}
+
 void PortAccessor::startContinuousRead() {
     if (isOpen()) {
         if (continuousReadStartCount.load() > 0) {
