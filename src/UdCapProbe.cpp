@@ -73,6 +73,8 @@ UdCapProbeType UdCapProbe::probe() {
         auto state = condition.wait_for(lk, std::chrono::seconds(1));
         if (state == std::cv_status::timeout) {
             unlisten();
+            portAccessor->stopContinuousRead();
+            portAccessor->setPacketRealignmentHelper(std::move(pPacketRealignmentHelper));
             this->udCapSerial = "";
             return UDCAP_PROBE_FAILURE;
         }
