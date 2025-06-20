@@ -304,14 +304,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
         lastBattery = batt;
         packet.battery = batt;
         callListenCallback(packet);
-    } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SET_CHANNEL) {
-        UdCapV1MCUPacket packet{};
-        packet.address = packetBuffer[2];
-        packet.commandType = CommandType::CMD_SET_CHANNEL;
-        auto deData = decodeXOR(data);
-        uint16_t result = deData[1];
-        packet.channel = result;
-        callListenCallback(packet);
     } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_SERIAL) {
         {
             UdCapV1MCUPacket packet{};
