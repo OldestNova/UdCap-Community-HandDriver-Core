@@ -62,11 +62,21 @@ UdCapProbeType UdCapProbe::probe() {
             uds = std::string(data->begin(), data->end());
             condition.notify_all();
         });
+        portAccessor->addOnceRawDataCallback([&condition](std::shared_ptr<std::vector<uint8_t>> data){
+            condition.notify_all();
+            return true;
+        });
         portAccessor->startContinuousRead();
         std::string s = "AT+NAME?\r\n";
         portAccessor->writeData(s);
         std::unique_lock lk(mutex);
-        auto state = condition.wait_for(lk, std::chrono::seconds(3));
+        auto state = condition.wait_for(lk, std::chrono::seconds(1));
+        if (state == std::cv_status::timeout) {
+            unlisten();
+            this->udCapSerial = "";
+            return UDCAP_PROBE_FAILURE;
+        }
+        state = condition.wait_for(lk, std::chrono::seconds(3));
         unlisten();
         portAccessor->stopContinuousRead();
         portAccessor->setPacketRealignmentHelper(std::move(pPacketRealignmentHelper));
