@@ -80,6 +80,12 @@ enum UdState {
     UD_INIT_STATE_LINKED = 3
 };
 
+struct BoneRotation {
+    float x;
+    float y;
+    float z;
+};
+
 struct BoneQuaternion {
     float x;
     float y;
@@ -87,10 +93,24 @@ struct BoneQuaternion {
     float w;
 };
 
+struct FingerRotation {
+    BoneRotation proximal;
+    BoneRotation intermediate;
+    BoneRotation distal;
+};
+
 struct FingerQuaternion {
     BoneQuaternion proximal;
     BoneQuaternion intermediate;
     BoneQuaternion distal;
+};
+
+struct HandRotation {
+    FingerRotation thumbFinger;
+    FingerRotation indexFinger;
+    FingerRotation middleFinger;
+    FingerRotation ringFinger;
+    FingerRotation littleFinger;
 };
 
 struct HandQuaternion {
@@ -229,6 +249,24 @@ enum UdCapV1DeviceCaliType {
     UDCAP_V1_DEVICE_CALI_TYPE_JOYSTICK = 1,
 };
 
+enum HandBone {
+    HAND_BONE_THUMB_PROXIMAL = 0,
+    HAND_BONE_THUMB_INTERMEDIATE = 1,
+    HAND_BONE_THUMB_DISTAL = 2,
+    HAND_BONE_INDEX_PROXIMAL = 3,
+    HAND_BONE_INDEX_INTERMEDIATE = 4,
+    HAND_BONE_INDEX_DISTAL = 5,
+    HAND_BONE_MIDDLE_PROXIMAL = 6,
+    HAND_BONE_MIDDLE_INTERMEDIATE = 7,
+    HAND_BONE_MIDDLE_DISTAL = 8,
+    HAND_BONE_RING_PROXIMAL = 9,
+    HAND_BONE_RING_INTERMEDIATE = 10,
+    HAND_BONE_RING_DISTAL = 11,
+    HAND_BONE_LITTLE_PROXIMAL = 12,
+    HAND_BONE_LITTLE_INTERMEDIATE = 13,
+    HAND_BONE_LITTLE_DISTAL = 14
+};
+
 class UdCapV1Core {
 public:
     UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor);
@@ -297,7 +335,7 @@ public:
     float getTrackpadButtonMin() const;
     float getTrackpadButtonMax() const;
 
-    // TODO
+    void setHandOffset(HandBone bone, float v);
 
     bool loadPref();
 
@@ -345,6 +383,7 @@ private:
     float gripMin = 0.5f;
     float trackpadMax = 1.0f;
     float trackpadMin = 0.5f;
+    HandRotation handOffset;
     bool thumbOn = true;
     bool isSettingChannel = false;
     float thumbFix[3] = { 0.1f, 0.3f, 1.2f };

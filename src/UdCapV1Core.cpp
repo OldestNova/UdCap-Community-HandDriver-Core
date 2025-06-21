@@ -9,6 +9,9 @@
 #include <iostream>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <nlohmann/json.hpp>
+#include <fstream>
+
 #define M_PI 3.14159265358979323846
 ImportAR1Linear(AR1LinearAA)
 ImportAR1Linear(AR1LinearAD)
@@ -456,19 +459,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             double a13 = array4[9];
             double a14 = array4[10];
             double a15 = array4[11];
-            // double array5[12][1];
-            // array5[0][0]  = a4;
-            // array5[1][0]  = a5;
-            // array5[2][0]  = a6;
-            // array5[3][0]  = a7;
-            // array5[4][0]  = a8;
-            // array5[5][0]  = a9;
-            // array5[6][0]  = a10;
-            // array5[7][0]  = a11;
-            // array5[8][0]  = a12;
-            // array5[9][0]  = a13;
-            // array5[10][0] = a14;
-            // array5[11][0] = a15;
             std::vector<double> array6
             {
                 a4,
@@ -484,24 +474,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                 a14,
                 a15
             };
-
-            //            if (pre_sensor_data == null)
-            //            {
-            //                pre_sensor_data = new double[12];
-            //                pre_sensor_data[0] = Convert.ToDouble(a4);
-            //                pre_sensor_data[1] = Convert.ToDouble(a5);
-            //                pre_sensor_data[2] = Convert.ToDouble(a6);
-            //                pre_sensor_data[3] = Convert.ToDouble(a7);
-            //                pre_sensor_data[4] = Convert.ToDouble(a8);
-            //                pre_sensor_data[5] = Convert.ToDouble(a9);
-            //                pre_sensor_data[6] = Convert.ToDouble(a10);
-            //                pre_sensor_data[7] = Convert.ToDouble(a11);
-            //                pre_sensor_data[8] = Convert.ToDouble(a12);
-            //                pre_sensor_data[9] = Convert.ToDouble(a13);
-            //                pre_sensor_data[10] = Convert.ToDouble(a14);
-            //                pre_sensor_data[11] = Convert.ToDouble(a15);
-            //            }
-
             std::string serialNum = getUDCapSerial();
             std::vector<double> list;
             if (serialNum.empty()) {
@@ -515,8 +487,6 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             } else {
                 list = AR1LinearAE()->sensor2Angle(array6, {});
             }
-            //            Array.Copy(array6, pre_sensor_data, pre_sensor_data.Length);
-
             if (count < 8) {
                 for (int k = 0; k < 23; k++) {
                     filterCount[k][count] = list[k];
@@ -590,25 +560,25 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                     double conLittle11 = _calibrationDataC[19];
                     double conLittle22 = _calibrationDataC[22];
 
-                    packetSkeleton.skeletonQuaternion.indexFinger.proximal = eulerToQuaternion(conIndex22, 0 - conIndex11, 0 - conIndex1);
-                    packetSkeleton.skeletonQuaternion.indexFinger.intermediate = eulerToQuaternion(0, 0, 0 - conIndex2);
-                    packetSkeleton.skeletonQuaternion.indexFinger.distal = eulerToQuaternion(0, 0, 0 - conIndex3);
+                    packetSkeleton.skeletonQuaternion.indexFinger.proximal = eulerToQuaternion(conIndex22 + handOffset.indexFinger.proximal.x, 0 - conIndex11 + handOffset.indexFinger.proximal.y, 0 - conIndex1 + handOffset.indexFinger.proximal.z);
+                    packetSkeleton.skeletonQuaternion.indexFinger.intermediate = eulerToQuaternion(0 + handOffset.indexFinger.intermediate.x, 0 + handOffset.indexFinger.intermediate.y, 0 - conIndex2 + handOffset.indexFinger.intermediate.z);
+                    packetSkeleton.skeletonQuaternion.indexFinger.distal = eulerToQuaternion(0 + handOffset.indexFinger.distal.x, 0 + handOffset.indexFinger.distal.y, 0 - conIndex3 + handOffset.indexFinger.distal.z);
 
-                    packetSkeleton.skeletonQuaternion.middleFinger.proximal = eulerToQuaternion(0, conMiddle11, 0 - conMiddle1);
-                    packetSkeleton.skeletonQuaternion.middleFinger.intermediate = eulerToQuaternion(0, 0, 0 - conMiddle2);
-                    packetSkeleton.skeletonQuaternion.middleFinger.distal = eulerToQuaternion(0, 0, 0 - conMiddle3);
+                    packetSkeleton.skeletonQuaternion.middleFinger.proximal = eulerToQuaternion(0 + handOffset.middleFinger.proximal.x, conMiddle11 + handOffset.middleFinger.proximal.y, 0 - conMiddle1 + handOffset.middleFinger.proximal.z);
+                    packetSkeleton.skeletonQuaternion.middleFinger.intermediate = eulerToQuaternion(0 + handOffset.middleFinger.intermediate.x, 0 + handOffset.middleFinger.intermediate.y, 0 - conMiddle2 + handOffset.middleFinger.intermediate.z);
+                    packetSkeleton.skeletonQuaternion.middleFinger.distal = eulerToQuaternion(0 + handOffset.middleFinger.distal.x, 0 + handOffset.middleFinger.distal.y, 0 - conMiddle3 + handOffset.middleFinger.distal.z);
 
-                    packetSkeleton.skeletonQuaternion.ringFinger.proximal = eulerToQuaternion(0, 0 - conRing11, 0 - conRing1);
-                    packetSkeleton.skeletonQuaternion.ringFinger.intermediate = eulerToQuaternion(0, 0, 0 - conRing2);
-                    packetSkeleton.skeletonQuaternion.ringFinger.distal = eulerToQuaternion(0, 0, 0 - conRing3);
+                    packetSkeleton.skeletonQuaternion.ringFinger.proximal = eulerToQuaternion(0 + handOffset.ringFinger.proximal.x, 0 - conRing11 + handOffset.ringFinger.proximal.y, 0 - conRing1 + handOffset.ringFinger.proximal.z);
+                    packetSkeleton.skeletonQuaternion.ringFinger.intermediate = eulerToQuaternion(0 + handOffset.ringFinger.intermediate.x, 0 + handOffset.ringFinger.intermediate.y, 0 - conRing2 + handOffset.ringFinger.intermediate.z);
+                    packetSkeleton.skeletonQuaternion.ringFinger.distal = eulerToQuaternion(0 + handOffset.ringFinger.distal.x, 0 + handOffset.ringFinger.distal.y, 0 - conRing3 + handOffset.ringFinger.distal.z);
 
-                    packetSkeleton.skeletonQuaternion.littleFinger.proximal = eulerToQuaternion(conLittle22, 0 - conLittle11, 0 - conLittle1);
-                    packetSkeleton.skeletonQuaternion.littleFinger.intermediate = eulerToQuaternion(0, 0, 0 - conLittle2);
-                    packetSkeleton.skeletonQuaternion.littleFinger.distal = eulerToQuaternion(0, 0, 0 - conLittle3);
+                    packetSkeleton.skeletonQuaternion.littleFinger.proximal = eulerToQuaternion(conLittle22 + handOffset.littleFinger.proximal.x, 0 - conLittle11 + handOffset.littleFinger.proximal.y, 0 - conLittle1 + handOffset.littleFinger.proximal.z);
+                    packetSkeleton.skeletonQuaternion.littleFinger.intermediate = eulerToQuaternion(0 + handOffset.littleFinger.intermediate.x, 0 + handOffset.littleFinger.intermediate.y, 0 - conLittle2 + handOffset.littleFinger.intermediate.z);
+                    packetSkeleton.skeletonQuaternion.littleFinger.distal = eulerToQuaternion(0 + handOffset.littleFinger.distal.x, 0 + handOffset.littleFinger.distal.y, 0 - conLittle3 + handOffset.littleFinger.distal.z);
 
-                    packetSkeleton.skeletonQuaternion.thumbFinger.proximal = eulerToQuaternion((0 - conThumb22) * thumbFix[2], conThumb1 * thumbFix[0], (0 - conThumb11) * thumbFix[1]);
-                    packetSkeleton.skeletonQuaternion.thumbFinger.intermediate = eulerToQuaternion(0, 0 - conThumb2, 0);
-                    packetSkeleton.skeletonQuaternion.thumbFinger.distal = eulerToQuaternion(0,0 - conThumb3, 0);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.proximal = eulerToQuaternion((0 - conThumb22) * thumbFix[2] + handOffset.thumbFinger.proximal.x, conThumb1 * thumbFix[0] + handOffset.thumbFinger.proximal.y, (0 - conThumb11) * thumbFix[1] + handOffset.thumbFinger.proximal.z);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.intermediate = eulerToQuaternion(0 + handOffset.thumbFinger.intermediate.x, 0 - conThumb2 + handOffset.thumbFinger.intermediate.y, 0 + handOffset.thumbFinger.intermediate.z);
+                    packetSkeleton.skeletonQuaternion.thumbFinger.distal = eulerToQuaternion(0 + handOffset.thumbFinger.distal.x,0 - conThumb3 + handOffset.thumbFinger.distal.y, 0 + handOffset.thumbFinger.distal.z);
 
                     callListenCallback(packetSkeleton);
                 }
@@ -1111,6 +1081,57 @@ void UdCapV1Core::mcuGetFirmwareVersion() {
     sendCommand(1, CommandType::CMD_FW_VERSION, { 1 });
 }
 
+void UdCapV1Core::setHandOffset(HandBone bone, float v) {
+    if (v < -45.0f || v > 45.0f) throw std::runtime_error("Hand offset value must be between -45 and 45 degrees");
+    switch (bone) {
+        case HandBone::HAND_BONE_THUMB_PROXIMAL:
+            handOffset.thumbFinger.proximal.x = v;
+            break;
+        case HandBone::HAND_BONE_THUMB_INTERMEDIATE:
+            handOffset.thumbFinger.intermediate.x = v;
+            break;
+        case HandBone::HAND_BONE_THUMB_DISTAL:
+            handOffset.thumbFinger.distal.x = v;
+            break;
+        case HandBone::HAND_BONE_INDEX_PROXIMAL:
+            handOffset.indexFinger.proximal.x = v;
+            break;
+        case HandBone::HAND_BONE_INDEX_INTERMEDIATE:
+            handOffset.indexFinger.intermediate.x = v;
+            break;
+        case HandBone::HAND_BONE_INDEX_DISTAL:
+            handOffset.indexFinger.distal.x = v;
+            break;
+        case HandBone::HAND_BONE_MIDDLE_PROXIMAL:
+            handOffset.middleFinger.proximal.x = v;
+            break;
+        case HandBone::HAND_BONE_MIDDLE_INTERMEDIATE:
+            handOffset.middleFinger.intermediate.x = v;
+            break;
+        case HandBone::HAND_BONE_MIDDLE_DISTAL:
+            handOffset.middleFinger.distal.x = v;
+            break;
+        case HandBone::HAND_BONE_RING_PROXIMAL:
+            handOffset.ringFinger.proximal.x = v;
+            break;
+        case HandBone::HAND_BONE_RING_INTERMEDIATE:
+            handOffset.ringFinger.intermediate.x = v;
+            break;
+        case HandBone::HAND_BONE_RING_DISTAL:
+            handOffset.ringFinger.distal.x = v;
+            break;
+        case HandBone::HAND_BONE_LITTLE_PROXIMAL:
+            handOffset.littleFinger.proximal.x = v;
+            break;
+        case HandBone::HAND_BONE_LITTLE_INTERMEDIATE:
+            handOffset.littleFinger.intermediate.x = v;
+            break;
+        case HandBone::HAND_BONE_LITTLE_DISTAL:
+            handOffset.littleFinger.distal.x = v;
+            break;
+    }
+}
+
 bool UdCapV1Core::loadPref() {
     std::filesystem::path dirPath = CorePref::getInstance().getPrefPath();
     if (!std::filesystem::exists(dirPath)) {
@@ -1120,11 +1141,7 @@ bool UdCapV1Core::loadPref() {
     }
     std::filesystem::path prefFile(getUDCapSerial() + ".json");
     std::filesystem::path file = std::filesystem::relative(dirPath, prefFile);
-    if (!std::filesystem::exists(file)) {
-        return false;
-    }
-    // TODO
-    return false;
+    return loadPref(file.string());
 }
 
 bool UdCapV1Core::loadPref(std::string path) {
@@ -1133,10 +1150,125 @@ bool UdCapV1Core::loadPref(std::string path) {
     if (!std::filesystem::exists(parentPath)) {
         return false;
     }
-    if (!std::filesystem::exists(filePath)) {
+    if (!std::filesystem::exists(path)) {
         return false;
     }
-    // TODO
+    if (!std::filesystem::is_regular_file(path)) {
+        return false;
+    }
+    // Read the file and parse the JSON content UTF-8
+    std::ifstream inFile(path);
+    if (!inFile.is_open()) {
+        return false;
+    }
+    try {
+        nlohmann::json j = nlohmann::json::parse(inFile);
+        inFile.close();
+        if (j.contains("controller")) {
+            auto controller = j["controller"];
+            if (controller.contains("xCenterData")) xCenterData = controller["xCenterData"].get<float>();
+            if (controller.contains("yCenterData")) yCenterData = controller["yCenterData"].get<float>();
+            if (controller.contains("xMaxData")) xCenterData = controller["xMaxData"].get<float>();
+            if (controller.contains("xMinData")) yCenterData = controller["xMinData"].get<float>();
+            if (controller.contains("yMaxData")) xCenterData = controller["yMaxData"].get<float>();
+            if (controller.contains("yMinData")) yCenterData = controller["yMinData"].get<float>();
+            if (controller.contains("deadZone")) yCenterData = controller["deadZone"].get<float>();
+            if (controller.contains("triggerMax")) xCenterData = controller["triggerMax"].get<float>();
+            if (controller.contains("triggerMin")) yCenterData = controller["triggerMin"].get<float>();
+            if (controller.contains("gripMax")) xCenterData = controller["gripMax"].get<float>();
+            if (controller.contains("gripMin")) yCenterData = controller["gripMin"].get<float>();
+            if (controller.contains("trackpadMax")) xCenterData = controller["trackpadMax"].get<float>();
+            if (controller.contains("trackpadMin")) yCenterData = controller["trackpadMin"].get<float>();
+        }
+        if (j.contains("handOffset")) {
+            auto controller = j["handOffset"];
+            auto thumb = controller["thumbFinger"];
+            if (thumb.contains("proximal")) {
+                handOffset.thumbFinger.proximal.x = thumb["proximal"]["x"].get<float>();
+                handOffset.thumbFinger.proximal.y = thumb["proximal"]["y"].get<float>();
+                handOffset.thumbFinger.proximal.z = thumb["proximal"]["z"].get<float>();
+            }
+            if (thumb.contains("intermediate")) {
+                handOffset.thumbFinger.intermediate.x = thumb["intermediate"]["x"].get<float>();
+                handOffset.thumbFinger.intermediate.y = thumb["intermediate"]["y"].get<float>();
+                handOffset.thumbFinger.intermediate.z = thumb["intermediate"]["z"].get<float>();
+            }
+            if (thumb.contains("distal")) {
+                handOffset.thumbFinger.distal.x = thumb["distal"]["x"].get<float>();
+                handOffset.thumbFinger.distal.y = thumb["distal"]["y"].get<float>();
+                handOffset.thumbFinger.distal.z = thumb["distal"]["z"].get<float>();
+            }
+            auto index = controller["indexFinger"];
+            if (index.contains("proximal")) {
+                handOffset.indexFinger.proximal.x = index["proximal"]["x"].get<float>();
+                handOffset.indexFinger.proximal.y = index["proximal"]["y"].get<float>();
+                handOffset.indexFinger.proximal.z = index["proximal"]["z"].get<float>();
+            }
+            if (index.contains("intermediate")) {
+                handOffset.indexFinger.intermediate.x = index["intermediate"]["x"].get<float>();
+                handOffset.indexFinger.intermediate.y = index["intermediate"]["y"].get<float>();
+                handOffset.indexFinger.intermediate.z = index["intermediate"]["z"].get<float>();
+            }
+            if (index.contains("distal")) {
+                handOffset.indexFinger.distal.x = index["distal"]["x"].get<float>();
+                handOffset.indexFinger.distal.y = index["distal"]["y"].get<float>();
+                handOffset.indexFinger.distal.z = index["distal"]["z"].get<float>();
+            }
+            auto middle = controller["middleFinger"];
+            if (middle.contains("proximal")) {
+                handOffset.middleFinger.proximal.x = middle["proximal"]["x"].get<float>();
+                handOffset.middleFinger.proximal.y = middle["proximal"]["y"].get<float>();
+                handOffset.middleFinger.proximal.z = middle["proximal"]["z"].get<float>();
+            }
+            if (middle.contains("intermediate")) {
+                handOffset.middleFinger.intermediate.x = middle["intermediate"]["x"].get<float>();
+                handOffset.middleFinger.intermediate.y = middle["intermediate"]["y"].get<float>();
+                handOffset.middleFinger.intermediate.z = middle["intermediate"]["z"].get<float>();
+            }
+            if (middle.contains("distal")) {
+                handOffset.middleFinger.distal.x = middle["distal"]["x"].get<float>();
+                handOffset.middleFinger.distal.y = middle["distal"]["y"].get<float>();
+                handOffset.middleFinger.distal.z = middle["distal"]["z"].get<float>();
+            }
+            auto ring = controller["ringFinger"];
+            if (ring.contains("proximal")) {
+                handOffset.ringFinger.proximal.x = ring["proximal"]["x"].get<float>();
+                handOffset.ringFinger.proximal.y = ring["proximal"]["y"].get<float>();
+                handOffset.ringFinger.proximal.z = ring["proximal"]["z"].get<float>();
+            }
+            if (ring.contains("intermediate")) {
+                handOffset.ringFinger.intermediate.x = ring["intermediate"]["x"].get<float>();
+                handOffset.ringFinger.intermediate.y = ring["intermediate"]["y"].get<float>();
+                handOffset.ringFinger.intermediate.z = ring["intermediate"]["z"].get<float>();
+            }
+            if (ring.contains("distal")) {
+                handOffset.ringFinger.distal.x = ring["distal"]["x"].get<float>();
+                handOffset.ringFinger.distal.y = ring["distal"]["y"].get<float>();
+                handOffset.ringFinger.distal.z = ring["distal"]["z"].get<float>();
+            }
+            auto little = controller["littleFinger"];
+            if (little.contains("proximal")) {
+                handOffset.littleFinger.proximal.x = little["proximal"]["x"].get<float>();
+                handOffset.littleFinger.proximal.y = little["proximal"]["y"].get<float>();
+                handOffset.littleFinger.proximal.z = little["proximal"]["z"].get<float>();
+            }
+            if (little.contains("intermediate")) {
+                handOffset.littleFinger.intermediate.x = little["intermediate"]["x"].get<float>();
+                handOffset.littleFinger.intermediate.y = little["intermediate"]["y"].get<float>();
+                handOffset.littleFinger.intermediate.z = little["intermediate"]["z"].get<float>();
+            }
+            if (little.contains("distal")) {
+                handOffset.littleFinger.distal.x = little["distal"]["x"].get<float>();
+                handOffset.littleFinger.distal.y = little["distal"]["y"].get<float>();
+                handOffset.littleFinger.distal.z = little["distal"]["z"].get<float>();
+            }
+        }
+        return true;
+    } catch (const nlohmann::json::parse_error&) {
+        if (inFile.is_open()) inFile.close();
+        return false;
+    }
+    if (inFile.is_open()) inFile.close();
     return false;
 }
 
@@ -1149,11 +1281,7 @@ bool UdCapV1Core::savePref() {
     }
     std::filesystem::path prefFile(getUDCapSerial() + ".json");
     std::filesystem::path file = std::filesystem::relative(dirPath, prefFile);
-    if (!std::filesystem::exists(file)) {
-        return false;
-    }
-    // TODO
-    return false;
+    return savePref(file.string());
 }
 
 bool UdCapV1Core::savePref(std::string path) {
@@ -1162,6 +1290,92 @@ bool UdCapV1Core::savePref(std::string path) {
     if (!std::filesystem::exists(parentPath)) {
         return false;
     }
-    // TODO
-    return false;
+    std::ofstream outFile(path);
+    if (!outFile.is_open()) {
+        return false;
+    }
+    nlohmann::json j;
+    j["controller"] = nlohmann::json::object();
+    j["controller"]["xCenterData"] = xCenterData;
+    j["controller"]["yCenterData"] = yCenterData;
+    j["controller"]["xMaxData"] = xMaxData;
+    j["controller"]["xMinData"] = xMinData;
+    j["controller"]["yMaxData"] = yMaxData;
+    j["controller"]["yMinData"] = yMinData;
+    j["controller"]["deadZone"] = deadZone;
+    j["controller"]["triggerMax"] = triggerMax;
+    j["controller"]["triggerMin"] = triggerMin;
+    j["controller"]["gripMax"] = gripMax;
+    j["controller"]["gripMin"] = gripMin;
+    j["controller"]["trackpadMax"] = trackpadMax;
+    j["controller"]["trackpadMin"] = trackpadMin;
+    j["handOffset"] = nlohmann::json::object();
+    j["handOffset"]["thumbFinger"] = nlohmann::json::object();
+    j["handOffset"]["thumbFinger"]["proximal"] = nlohmann::json::object();
+    j["handOffset"]["thumbFinger"]["proximal"]["x"] = handOffset.thumbFinger.proximal.x;
+    j["handOffset"]["thumbFinger"]["proximal"]["y"] = handOffset.thumbFinger.proximal.y;
+    j["handOffset"]["thumbFinger"]["proximal"]["z"] = handOffset.thumbFinger.proximal.z;
+    j["handOffset"]["thumbFinger"]["intermediate"] = nlohmann::json::object();
+    j["handOffset"]["thumbFinger"]["intermediate"]["x"] = handOffset.thumbFinger.intermediate.x;
+    j["handOffset"]["thumbFinger"]["intermediate"]["y"] = handOffset.thumbFinger.intermediate.y;
+    j["handOffset"]["thumbFinger"]["intermediate"]["z"] = handOffset.thumbFinger.intermediate.z;
+    j["handOffset"]["thumbFinger"]["distal"] = nlohmann::json::object();
+    j["handOffset"]["thumbFinger"]["distal"]["x"] = handOffset.thumbFinger.distal.x;
+    j["handOffset"]["thumbFinger"]["distal"]["y"] = handOffset.thumbFinger.distal.y;
+    j["handOffset"]["thumbFinger"]["distal"]["z"] = handOffset.thumbFinger.distal.z;
+    j["handOffset"]["indexFinger"] = nlohmann::json::object();
+    j["handOffset"]["indexFinger"]["proximal"] = nlohmann::json::object();
+    j["handOffset"]["indexFinger"]["proximal"]["x"] = handOffset.indexFinger.proximal.x;
+    j["handOffset"]["indexFinger"]["proximal"]["y"] = handOffset.indexFinger.proximal.y;
+    j["handOffset"]["indexFinger"]["proximal"]["z"] = handOffset.indexFinger.proximal.z;
+    j["handOffset"]["indexFinger"]["intermediate"] = nlohmann::json::object();
+    j["handOffset"]["indexFinger"]["intermediate"]["x"] = handOffset.indexFinger.intermediate.x;
+    j["handOffset"]["indexFinger"]["intermediate"]["y"] = handOffset.indexFinger.intermediate.y;
+    j["handOffset"]["indexFinger"]["intermediate"]["z"] = handOffset.indexFinger.intermediate.z;
+    j["handOffset"]["indexFinger"]["distal"] = nlohmann::json::object();
+    j["handOffset"]["indexFinger"]["distal"]["x"] = handOffset.indexFinger.distal.x;
+    j["handOffset"]["indexFinger"]["distal"]["y"] = handOffset.indexFinger.distal.y;
+    j["handOffset"]["indexFinger"]["distal"]["z"] = handOffset.indexFinger.distal.z;
+    j["handOffset"]["middleFinger"] = nlohmann::json::object();
+    j["handOffset"]["middleFinger"]["proximal"] = nlohmann::json::object();
+    j["handOffset"]["middleFinger"]["proximal"]["x"] = handOffset.middleFinger.proximal.x;
+    j["handOffset"]["middleFinger"]["proximal"]["y"] = handOffset.middleFinger.proximal.y;
+    j["handOffset"]["middleFinger"]["proximal"]["z"] = handOffset.middleFinger.proximal.z;
+    j["handOffset"]["middleFinger"]["intermediate"] = nlohmann::json::object();
+    j["handOffset"]["middleFinger"]["intermediate"]["x"] = handOffset.middleFinger.intermediate.x;
+    j["handOffset"]["middleFinger"]["intermediate"]["y"] = handOffset.middleFinger.intermediate.y;
+    j["handOffset"]["middleFinger"]["intermediate"]["z"] = handOffset.middleFinger.intermediate.z;
+    j["handOffset"]["middleFinger"]["distal"] = nlohmann::json::object();
+    j["handOffset"]["middleFinger"]["distal"]["x"] = handOffset.middleFinger.distal.x;
+    j["handOffset"]["middleFinger"]["distal"]["y"] = handOffset.middleFinger.distal.y;
+    j["handOffset"]["middleFinger"]["distal"]["z"] = handOffset.middleFinger.distal.z;
+    j["handOffset"]["ringFinger"] = nlohmann::json::object();
+    j["handOffset"]["ringFinger"]["proximal"] = nlohmann::json::object();
+    j["handOffset"]["ringFinger"]["proximal"]["x"] = handOffset.ringFinger.proximal.x;
+    j["handOffset"]["ringFinger"]["proximal"]["y"] = handOffset.ringFinger.proximal.y;
+    j["handOffset"]["ringFinger"]["proximal"]["z"] = handOffset.ringFinger.proximal.z;
+    j["handOffset"]["ringFinger"]["intermediate"] = nlohmann::json::object();
+    j["handOffset"]["ringFinger"]["intermediate"]["x"] = handOffset.ringFinger.intermediate.x;
+    j["handOffset"]["ringFinger"]["intermediate"]["y"] = handOffset.ringFinger.intermediate.y;
+    j["handOffset"]["ringFinger"]["intermediate"]["z"] = handOffset.ringFinger.intermediate.z;
+    j["handOffset"]["ringFinger"]["distal"] = nlohmann::json::object();
+    j["handOffset"]["ringFinger"]["distal"]["x"] = handOffset.ringFinger.distal.x;
+    j["handOffset"]["ringFinger"]["distal"]["y"] = handOffset.ringFinger.distal.y;
+    j["handOffset"]["ringFinger"]["distal"]["z"] = handOffset.ringFinger.distal.z;
+    j["handOffset"]["littleFinger"] = nlohmann::json::object();
+    j["handOffset"]["littleFinger"]["proximal"] = nlohmann::json::object();
+    j["handOffset"]["littleFinger"]["proximal"]["x"] = handOffset.littleFinger.proximal.x;
+    j["handOffset"]["littleFinger"]["proximal"]["y"] = handOffset.littleFinger.proximal.y;
+    j["handOffset"]["littleFinger"]["proximal"]["z"] = handOffset.littleFinger.proximal.z;
+    j["handOffset"]["littleFinger"]["intermediate"] = nlohmann::json::object();
+    j["handOffset"]["littleFinger"]["intermediate"]["x"] = handOffset.littleFinger.intermediate.x;
+    j["handOffset"]["littleFinger"]["intermediate"]["y"] = handOffset.littleFinger.intermediate.y;
+    j["handOffset"]["littleFinger"]["intermediate"]["z"] = handOffset.littleFinger.intermediate.z;
+    j["handOffset"]["littleFinger"]["distal"] = nlohmann::json::object();
+    j["handOffset"]["littleFinger"]["distal"]["x"] = handOffset.littleFinger.distal.x;
+    j["handOffset"]["littleFinger"]["distal"]["y"] = handOffset.littleFinger.distal.y;
+    j["handOffset"]["littleFinger"]["distal"]["z"] = handOffset.littleFinger.distal.z;
+    outFile << j.dump(4); // Pretty print with 4 spaces
+    outFile.close();
+    return true;
 }

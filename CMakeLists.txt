@@ -29,6 +29,11 @@ if(Eigen_ADDED)
     add_library(Eigen INTERFACE IMPORTED GLOBAL)
     target_include_directories(Eigen INTERFACE ${Eigen_SOURCE_DIR})
 endif()
+CPMAddPackage(
+        NAME nlohmann_json
+        GIT_TAG v3.12.0
+        GITHUB_REPOSITORY nlohmann/json
+)
 
 file(GLOB_RECURSE SRC_FILES
         src/*.cpp
@@ -37,7 +42,7 @@ file(GLOB_RECURSE SRC_FILES
 )
 include_directories(src)
 add_library(UdCapCommunityDriverCore STATIC ${SRC_FILES})
-target_link_libraries(UdCapCommunityDriverCore PUBLIC SerialReborn AR1Linear Eigen)
+target_link_libraries(UdCapCommunityDriverCore PUBLIC SerialReborn AR1Linear Eigen nlohmann_json::nlohmann_json)
 target_include_directories(UdCapCommunityDriverCore PUBLIC src)
 IF (WIN32 AND COPY_HIDAPI_DLL)
     add_custom_command(TARGET UdCapCommunityDriverCore POST_BUILD
