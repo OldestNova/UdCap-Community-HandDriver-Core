@@ -1132,6 +1132,31 @@ void UdCapV1Core::setHandOffset(HandBone bone, float v) {
     }
 }
 
+void UdCapV1Core::setHandOffset(HandRotation r) {
+    if (r.thumbFinger.proximal.x < -45.0f || r.thumbFinger.proximal.x > 45.0f ||
+        r.thumbFinger.intermediate.x < -45.0f || r.thumbFinger.intermediate.x > 45.0f ||
+        r.thumbFinger.distal.x < -45.0f || r.thumbFinger.distal.x > 45.0f ||
+        r.indexFinger.proximal.x < -45.0f || r.indexFinger.proximal.x > 45.0f ||
+        r.indexFinger.intermediate.x < -45.0f || r.indexFinger.intermediate.x > 45.0f ||
+        r.indexFinger.distal.x < -45.0f || r.indexFinger.distal.x > 45.0f ||
+        r.middleFinger.proximal.x < -45.0f || r.middleFinger.proximal.x > 45.0f ||
+        r.middleFinger.intermediate.x < -45.0f || r.middleFinger.intermediate.x > 45.0f ||
+        r.middleFinger.distal.x < -45.0f || r.middleFinger.distal.x > 45.0f ||
+        r.ringFinger.proximal.x < -45.0f || r.ringFinger.proximal.x > 45.0f ||
+        r.ringFinger.intermediate.x < -45.0f || r.ringFinger.intermediate.x > 45.0f ||
+        r.ringFinger.distal.x < -45.0f || r.ringFinger.distal.x > 45.0f ||
+        r.littleFinger.proximal.x < -45.0f || r.littleFinger.proximal.x > 45.0f ||
+        r.littleFinger.intermediate.x < -45.0f || r.littleFinger.intermediate.x > 45.0f ||
+        r.littleFinger.distal.x < -45.0f || r.littleFinger.distal.x > 45.0f) {
+        throw std::runtime_error("Hand offset value must be between -45 and 45 degrees");
+    }
+    handOffset = r;
+}
+
+HandRotation UdCapV1Core::getHandOffset() const {
+    return handOffset;
+}
+
 bool UdCapV1Core::loadPref() {
     std::filesystem::path dirPath = CorePref::getInstance().getPrefPath();
     if (!std::filesystem::exists(dirPath)) {

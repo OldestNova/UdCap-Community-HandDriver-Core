@@ -336,6 +336,8 @@ public:
     float getTrackpadButtonMax() const;
 
     void setHandOffset(HandBone bone, float v);
+    void setHandOffset(HandRotation r);
+    HandRotation getHandOffset() const;
 
     bool loadPref();
 
