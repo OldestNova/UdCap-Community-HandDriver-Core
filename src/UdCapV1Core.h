@@ -303,6 +303,8 @@ public:
 
     void mcuGetFirmwareVersion();
 
+    void mcuGetLinkState();
+
     void mcuSendVibration(int index, float second, int strength);
 
     void runCalibration(UdCapV1DeviceCaliType type);

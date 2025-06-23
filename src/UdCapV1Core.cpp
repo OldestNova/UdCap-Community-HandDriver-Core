@@ -359,6 +359,10 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             callListenCallback(packet);
         }
     } else if (packetBuffer[3] == (uint8_t) CommandType::CMD_DATA) {
+        if (udState == UD_INIT_STATE_INIT) {
+            mcuGetLinkState();
+            return;
+        }
         UdCapV1MCUPacket packet{};
         packet.address = packetBuffer[2];
         packet.commandType = CommandType::CMD_DATA;
@@ -728,6 +732,10 @@ void UdCapV1Core::mcuStartData() {
         }
         sendCommand(1, CommandType::CMD_DATA, s);
     }
+}
+
+void UdCapV1Core::mcuGetLinkState() {
+    sendCommand(1, CommandType::CMD_LINK_STATE, {1});
 }
 
 void UdCapV1Core::mcuGetSerialNum() {
