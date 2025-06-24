@@ -262,7 +262,7 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
             }
             if (udState != UdState::UD_INIT_STATE_NOT_CONNECT && udState != UdState::UD_INIT_STATE_INIT) {
                 udState = packet.udState;
-                // Not need to stop data, just reset the state
+                mcuStopData();
             }
             udState = UdState::UD_INIT_STATE_NOT_CONNECT;
         } else if (linkState == 1) {
