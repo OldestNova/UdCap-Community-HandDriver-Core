@@ -267,6 +267,13 @@ enum HandBone {
     HAND_BONE_LITTLE_DISTAL = 14
 };
 
+struct UdCapV1LastCaliData {
+    bool hasLast;
+    UdCapV1HandCaliFist caliFist;
+    UdCapV1HandCaliAdduction caliAdduction;
+    UdCapV1HandCaliProtract caliProtract;
+};
+
 class UdCapV1Core {
 public:
     UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor);
@@ -314,6 +321,8 @@ public:
     void clearCalibrationData(UdCapV1HandCaliType type);
 
     void completeCalibration(UdCapV1DeviceCaliType type);
+
+    void tryRestoreHandCalibration();
 
     void captureJoystickData(UdCapV1JoystickCaliType type);
 
@@ -373,6 +382,7 @@ private:
     UdCapV1HandCaliAdduction caliAdduction;
     UdCapV1HandCaliProtract caliProtract;
     UdCapV1HandData lastAngle{};
+    UdCapV1LastCaliData lastCaliData;
     volatile UdCapV1JoystickCaliStat joystickCaliStat = UDCAP_V1_JOYSTICK_CALI_STAT_OK;
     float xCenterData = 1850.0;
     float yCenterData = 1850.0;

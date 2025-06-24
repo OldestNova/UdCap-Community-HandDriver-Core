@@ -160,6 +160,7 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
             }
         }
     });
+    lastCaliData.hasLast = false;
     eventLoop = std::move(t);
     this->portAccessor->openPort();
     this->portAccessor->setBaudRate(115200);
@@ -993,6 +994,9 @@ void UdCapV1Core::completeCalibration(UdCapV1DeviceCaliType type) {
         for (int i = 0; i < 12; i++) {
             if (abs(array3[i] - array2[i]) > 25.0) {
                 calibrationSuccess = true;
+                memcpy((void*)(&lastCaliData.caliFist), (void*)(&caliFist), sizeof(UdCapV1HandCaliFist));
+                memcpy((void*)(&lastCaliData.caliAdduction), (void*)(&caliAdduction), sizeof(UdCapV1HandCaliAdduction));
+                memcpy((void*)(&lastCaliData.caliProtract), (void*)(&caliProtract), sizeof(UdCapV1HandCaliProtract));
             }
         }
         if (!calibrationSuccess) {
@@ -1012,6 +1016,29 @@ void UdCapV1Core::completeCalibration(UdCapV1DeviceCaliType type) {
         callListenCallback(caliPacket);
     } else if (type == UdCapV1DeviceCaliType::UDCAP_V1_DEVICE_CALI_TYPE_JOYSTICK) {
         joystickCaliStat = UdCapV1JoystickCaliStat::UDCAP_V1_JOYSTICK_CALI_STAT_OK;
+    }
+}
+
+void UdCapV1Core::tryRestoreHandCalibration() {
+    if (udState != UD_INIT_STATE_LINKED) {
+        throw std::runtime_error("Core not initialized");
+    }
+    if (caliStat == UDCAP_V1_HAND_CALI_STAT_COMPLETED) {
+        return;
+    }
+    if (caliStat != UDCAP_V1_HAND_CALI_STAT_NONE) {
+        throw std::runtime_error("Calibration already in progress");
+    }
+    if (lastCaliData.hasLast) {
+        caliStat = UDCAP_V1_HAND_CALI_STAT_COMPLETED;
+        caliFist = lastCaliData.caliFist;
+        caliAdduction = lastCaliData.caliAdduction;
+        caliProtract = lastCaliData.caliProtract;
+        UdCapV1MCUPacket caliPacket {};
+        caliPacket.address = 1;
+        caliPacket.commandType = CommandType::CMD_READY;
+        caliPacket.isReady = true;
+        callListenCallback(caliPacket);
     }
 }
 
