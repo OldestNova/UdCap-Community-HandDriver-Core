@@ -3,6 +3,7 @@
 //
 
 #include "PortAccessor.h"
+#include "UsbEnumerate.h"
 #include <hidapi.h>
 #include <iomanip>
 #include <iostream>
@@ -98,9 +99,25 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
     });
     txThread.detach();
     txEventThread = std::move(txThread);
+    unlistenHotPlugCallback = UsbEnumerate::getInstance()->listenHotPlug([this](UsbHotPlugEventType event){
+        if (event == UsbHotPlugEventType::USB_HOT_PLUG_EVENT_ADD && isDead) {
+            try {
+                if (!serialPort->io().stopped()) {
+                    serialPort->io().stop();
+                }
+                serialPort->io().restart();
+                openPort();
+                isDead = false;
+            } catch (const std::exception &e) {
+                isDead = true;
+                callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
+            }
+        }
+    });
 }
 
 PortAccessor::~PortAccessor() {
+    unlistenHotPlugCallback();
     eventLoopRunning.store(false);
     if (continuousReadRunning) {
         continuousReadRunning = false;
@@ -111,8 +128,16 @@ PortAccessor::~PortAccessor() {
     closePort();
 }
 
+void PortAccessor::callConnectionStateCallback(PortAccessorConnectionState state) {
+    std::lock_guard lk(callbackMutex);
+    for (const auto &pair: connectionStateCallbacks) {
+        pair.second(state);
+    }
+}
+
 void PortAccessor::openPort() {
     if (isOpen()) return;
+    std::lock_guard lk(ioMutex);
     if (serialDevice.isHid) {
         std::wstring wideSerialNumber =
                 std::wstring(serialDevice.serialNumber.begin(), serialDevice.serialNumber.end());
@@ -122,6 +147,7 @@ void PortAccessor::openPort() {
             hidDevice = hid_open(serialDevice.vid, serialDevice.pid, wideSerialNumber.c_str());
         }
         if (!hidDevice) {
+            callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
             throw std::runtime_error("Failed to open HID device");
         }
     } else {
@@ -130,11 +156,13 @@ void PortAccessor::openPort() {
         while (!serialPort->socket().is_open()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if (--waitOpen == 0) {
+                callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
                 throw std::runtime_error("Failed to open serial port");
             }
         }
     }
     isOpenFlag = true;
+    callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_CONNECTED);
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 }
 
@@ -158,6 +186,7 @@ void PortAccessor::closePort() {
 }
 
 void PortAccessor::setBaudRate(int baudRate) {
+    std::lock_guard lk(ioMutex);
     if (serialDevice.isHid) {
         throw std::runtime_error("Cannot set baud rate for HID device");
     } else {
@@ -166,6 +195,7 @@ void PortAccessor::setBaudRate(int baudRate) {
 }
 
 void PortAccessor::setStopBit(StopBit stopBit) {
+    std::lock_guard lk(ioMutex);
     if (serialDevice.isHid) {
         throw std::runtime_error("Cannot set stop bit for HID device");
     } else {
@@ -189,6 +219,7 @@ void PortAccessor::setStopBit(StopBit stopBit) {
 }
 
 void PortAccessor::setParity(Parity parity) {
+    std::lock_guard lk(ioMutex);
     if (serialDevice.isHid) {
         throw std::runtime_error("Cannot set parity for HID device");
     } else {
@@ -212,6 +243,7 @@ void PortAccessor::setParity(Parity parity) {
 }
 
 void PortAccessor::setFlowControl(FlowControl flowControl) {
+    std::lock_guard lk(ioMutex);
     if (serialDevice.isHid) {
         throw std::runtime_error("Cannot set flow control for HID device");
     } else {
@@ -235,6 +267,7 @@ void PortAccessor::setFlowControl(FlowControl flowControl) {
 }
 
 void PortAccessor::setDataBits(int dataBits) {
+    std::lock_guard lk(ioMutex);
     if (serialDevice.isHid) {
         throw std::runtime_error("Cannot set data bits for HID device");
     } else {
@@ -246,10 +279,12 @@ void PortAccessor::setDataBits(int dataBits) {
 }
 
 void PortAccessor::setReadSize(size_t size) {
+    std::lock_guard lk(ioMutex);
     readSize = size;
 }
 
 void PortAccessor::setTimeout(size_t timeout) {
+    std::lock_guard lk(ioMutex);
     this->timeout = timeout;
 }
 
@@ -263,24 +298,26 @@ std::vector<uint8_t> PortAccessor::readData() {
             size_t transfered = hid_read_timeout(hidDevice, buffer.data(), buffer.size(), (int) timeout);
             buffer.resize(transfered);
         } else {
-            uint8_t read = 4;
-            while (read > 0) {
                 try {
+                    std::lock_guard lk(ioMutex);
+                    if (isDead || !this->serialPort->socket().is_open()) {
+                        buffer.resize(0);
+                        return buffer;
+                    }
                     size_t transfered = serialPort->read_some(boost::asio::buffer(buffer),
                                                          std::chrono::milliseconds(this->timeout));
-                    if (transfered == 0) {
-                        read = read - 1;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                        continue;
-                    }
                     buffer.resize(transfered);
-                    read = 0;
                 } catch (const boost::system::system_error &e) {
-                    read = read - 1;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    if (e.code() != boost::asio::error::timed_out) {
+                        isDead = true;
+                        isOpenFlag = false;
+                        serialPort->socket().cancel();
+                        serialPort->socket().close();
+                        serialPort->io().stop();
+                        callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
+                    }
                 }
             }
-        }
         if (printRxTxToStdOut) {
             std::cout << "Receive: ";
             for (uint8_t b: buffer) {
@@ -319,11 +356,22 @@ void PortAccessor::writeData(const std::string &data) {
 }
 
 void PortAccessor::writeDataToDevice(const boost::asio::const_buffer &buffer) {
-    if (isOpen()) {
+    if (isOpen() && !isDead) {
         if (serialDevice.isHid) {
             hid_write(hidDevice, static_cast<const unsigned char *>(buffer.data()), buffer.size());
         } else {
-            serialPort->write(buffer, std::chrono::milliseconds(this->timeout));
+            try {
+                serialPort->write(buffer, std::chrono::milliseconds(this->timeout));
+            } catch (const boost::system::system_error &e) {
+                if (e.code() != boost::asio::error::timed_out) {
+                    isDead = true;
+                    isOpenFlag = false;
+                    serialPort->socket().cancel();
+                    serialPort->socket().close();
+                    serialPort->io().stop();
+                    callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
+                }
+            }
         }
     }
 }
@@ -373,18 +421,31 @@ void PortAccessor::startContinuousRead() {
         continuousReadRunning = true;
         continuousReadThread = std::thread([this] {
             while (continuousReadRunning) {
+                if (isDead || !this->serialPort->socket().is_open()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                }
                 try {
                     std::vector<uint8_t> data(this->readSize);
                     try {
+                        std::lock_guard lk(ioMutex);
                         if (serialDevice.isHid) {
                             size_t size = hid_read_timeout(hidDevice, data.data(), this->readSize, (int) this->timeout);
                             data.resize(size);
                         } else {
+                            if (isDead || !this->serialPort->socket().is_open()) continue;
                             size_t size = this->serialPort->read_some(boost::asio::buffer(data),
                                                                  std::chrono::milliseconds(this->timeout));
                             data.resize(size);
                         }
                     } catch (const boost::system::system_error &e) {
+                        if (e.code() != boost::asio::error::timed_out) {
+                            isDead = true;
+                            isOpenFlag = false;
+                            serialPort->socket().cancel();
+                            serialPort->socket().close();
+                            serialPort->io().stop();
+                            callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
+                        }
                         continue;
                     }
                     if (data.empty()) {
@@ -454,6 +515,18 @@ std::function<void()> PortAccessor::addOnceRawDataCallback(
         onceRawDataCallbacks.erase(fd);
     };
 }
+
+std::function<void()> PortAccessor::addConnectionCallback(
+        std::function<void(PortAccessorConnectionState)> callback) {
+    std::lock_guard guard(callbackMutex);
+    uint32_t fd = callbackFd.fetch_add(1);
+    connectionStateCallbacks[fd] = callback;
+    return [this, fd]() {
+        std::lock_guard guard(callbackMutex);
+        connectionStateCallbacks.erase(fd);
+    };
+}
+
 
 std::shared_ptr<PortAccessor> PortAccessor::create(const SerialDevice &port) {
     return std::make_shared<PortAccessor>(port);

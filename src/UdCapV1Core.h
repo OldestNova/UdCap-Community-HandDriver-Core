@@ -30,6 +30,7 @@ enum UdCapV1StateMachine {
 };
 
 enum CommandType {
+    CMD_PORT_CONNECTION_STATE = -6,
     CMD_SKELETON_QUATERNION = -5,
     CMD_INPUT_BUTTON = -4,
     CMD_INPUT_JOYSTICK = -3,
@@ -138,6 +139,7 @@ struct UdCapV1MCUPacket {
     UdCapV1ButtonData button {};
     HandQuaternion skeletonQuaternion {};
     bool pairing;
+    PortAccessorConnectionState portConnectionState;
 };
 
 class UdCapHandV1PacketRealignmentHelper : public PacketRealignmentHelper {
@@ -369,6 +371,7 @@ private:
     std::mutex eventLoopMutex;
     std::condition_variable eventCondition;
     std::function<void()> unlistenPortCallback;
+    std::function<void()> unlistenPortConnectionStateCallback;
     std::shared_ptr<PortAccessor> portAccessor;
     std::string udCapSerial;
     volatile UdTarget target = UD_TARGET_UNKNOWN;

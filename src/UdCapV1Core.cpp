@@ -162,6 +162,16 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
     });
     lastCaliData.hasLast = false;
     eventLoop = std::move(t);
+    unlistenPortConnectionStateCallback = this->portAccessor->addConnectionCallback([this](PortAccessorConnectionState state) {
+        std::lock_guard guard(callbackMutex);
+        std::shared_ptr<UdCapV1MCUPacket> packetPtr = std::make_shared<UdCapV1MCUPacket>();
+        packetPtr->address = 0;
+        packetPtr->commandType = CommandType::CMD_PORT_CONNECTION_STATE;
+        packetPtr->portConnectionState = state;
+        for (const auto &pair: listenCallbacks) {
+            pair.second(packetPtr);
+        }
+    });
     this->portAccessor->openPort();
     this->portAccessor->setBaudRate(115200);
     if (!this->portAccessor->hasPacketRealignmentHelper()) {
@@ -178,6 +188,7 @@ UdCapV1Core::UdCapV1Core(std::shared_ptr<PortAccessor> portAccessor): eventLoopR
 UdCapV1Core::~UdCapV1Core() {
     this->mcuStopData();
     this->unlistenPortCallback();
+    this->unlistenPortConnectionStateCallback();
     this->portAccessor->stopContinuousRead();
     this->eventLoopRunning.store(false);
     this->eventLoop.join();
@@ -664,17 +675,22 @@ void UdCapV1Core::parsePacket(const std::vector<uint8_t> &packetBuffer) {
                             powerBtnPressed = true;
                         }
                     }
-                    float triggerFinger = abs(_calibrationDataC[5]);
-                    if (triggerFinger > triggerMin * 100.0f && triggerFinger < triggerMax * 100.0f) {
-                        float value = (triggerFinger - triggerMin * 100.0f) / (triggerMax * 100.0f - triggerMin * 100.0f);
-                        packetInputBtn.button.trigger = value;
+                    if (packetInputBtn.button.btnA && packetInputBtn.button.btnB) {
+                        packetInputBtn.button.trigger = 0.0;
                         packetInputBtn.button.btnTrigger = false;
-                    } else if (triggerFinger >= triggerMax * 100.0f) {
-                        packetInputBtn.button.trigger = 1.0f;
-                        packetInputBtn.button.btnTrigger = true;
-                    } else if (triggerFinger <= triggerMin * 100.0f) {
-                        packetInputBtn.button.trigger = 0.0f;
-                        packetInputBtn.button.btnTrigger = false;
+                    } else {
+                        float triggerFinger = abs(_calibrationDataC[5]);
+                        if (triggerFinger > triggerMin * 100.0f && triggerFinger < triggerMax * 100.0f) {
+                            float value = (triggerFinger - triggerMin * 100.0f) / (triggerMax * 100.0f - triggerMin * 100.0f);
+                            packetInputBtn.button.trigger = value;
+                            packetInputBtn.button.btnTrigger = false;
+                        } else if (triggerFinger >= triggerMax * 100.0f) {
+                            packetInputBtn.button.trigger = 1.0f;
+                            packetInputBtn.button.btnTrigger = true;
+                        } else if (triggerFinger <= triggerMin * 100.0f) {
+                            packetInputBtn.button.trigger = 0.0f;
+                            packetInputBtn.button.btnTrigger = false;
+                        }
                     }
                     float gripFinger1 = abs(_calibrationDataC[9]);
                     float gripFinger2 = abs(_calibrationDataC[13]);

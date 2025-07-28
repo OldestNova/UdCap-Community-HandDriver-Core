@@ -48,6 +48,11 @@ public:
     virtual std::vector<std::vector<uint8_t>> processPacket(const std::vector<uint8_t>& data) = 0;
 };
 
+enum PortAccessorConnectionState {
+    PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED,
+    PORT_ACCESSOR_CONNECTION_STATE_CONNECTED
+};
+
 class PortAccessor {
 public:
     explicit PortAccessor(const SerialDevice& port);
@@ -73,21 +78,26 @@ public:
     bool hasPacketRealignmentHelper() const;
     std::unique_ptr<PacketRealignmentHelper> popPacketRealignmentHelper();
     std::function<void()> addDataCallback(std::function<void(std::shared_ptr<std::vector<uint8_t>>)>);
+    std::function<void()> addConnectionCallback(std::function<void(PortAccessorConnectionState)>);
     void startContinuousRead();
     void stopContinuousRead();
     void setWriteDelay(const uint64_t delay);
     std::function<void()> addOnceRawDataCallback(std::function<bool(std::shared_ptr<std::vector<uint8_t>>)>);
     void setPrintRxTxToStdOut(bool enable);
 private:
+    bool isDead = false;
+    std::function<void()> unlistenHotPlugCallback;
     bool printRxTxToStdOut = false;
     std::atomic_uint32_t callbackFd = 0;
     void writeDataToDevice(const boost::asio::const_buffer &buffer);
+    void callConnectionStateCallback(PortAccessorConnectionState state);
     SerialDevice serialDevice;
     boost::asio::io_context io;
     std::unique_ptr<DeadlineSocket<boost::asio::serial_port>> serialPort;
     hid_device* hidDevice = nullptr; // hid_device
     size_t readSize = 64;
-    size_t timeout = 500;
+    size_t timeout = 700;
+    std::mutex ioMutex;
     bool isOpenFlag = false;
     std::mutex queueMutex;
     std::thread continuousReadThread;
@@ -97,6 +107,7 @@ private:
     std::unique_ptr<PacketRealignmentHelper> packetRealignmentHelper;
     std::map<uint32_t, std::function<void(std::shared_ptr<std::vector<uint8_t>>)>> dataCallbacks;
     std::map<uint32_t, std::function<bool(std::shared_ptr<std::vector<uint8_t>>)>> onceRawDataCallbacks;
+    std::map<uint32_t, std::function<void(PortAccessorConnectionState)>> connectionStateCallbacks;
 
     // EventLoop
     std::atomic_bool eventLoopRunning = true;

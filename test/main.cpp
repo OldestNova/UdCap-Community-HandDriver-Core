@@ -48,11 +48,10 @@ int main() {
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 #endif
-    UsbEnumerate usbEnum;
     try {
-        usbEnum.refresh(USB_ENUMERATE_REFRESH_SERIAL);
-        usbEnum.printDevices();
-        std::vector<SerialDevice> devices = usbEnum.findPorts([](const SerialDevice &device) {
+        UsbEnumerate::getInstance()->refresh(USB_ENUMERATE_REFRESH_SERIAL);
+        UsbEnumerate::getInstance()->printDevices();
+        std::vector<SerialDevice> devices = UsbEnumerate::getInstance()->findPorts([](const SerialDevice &device) {
             return device.vid == 0x1A86 && device.pid == 0x7523;
         });
         for (const auto &device: devices) {
@@ -211,6 +210,8 @@ int main() {
                                       << data->skeletonQuaternion.littleFinger.proximal.w << std::endl;
 
                             std::cout << std::endl;
+                        } else if (data->commandType == CMD_PORT_CONNECTION_STATE) {
+                            std::cout << "Port Connection State: " << (data->portConnectionState ? "true" : "false") << std::endl;
                         }
                     });
                     cores.push_back(core);

@@ -4,8 +4,9 @@
 
 #ifndef SERIALREBORN_BOOSTHELPER_HPP
 #define SERIALREBORN_BOOSTHELPER_HPP
-
 #include <boost/asio.hpp>
+#undef max
+#undef min
 #include <chrono>
 #include <utility>
 
@@ -69,6 +70,7 @@ public:
     }
 private:
     using Timer = aio::basic_waitable_timer<Clock>;
+    std::mutex ioMutex;
 
     template<typename Duration, typename Op>
     auto with_timeout(Duration d, Op&& op, boost::system::error_code& ec) {
@@ -80,6 +82,7 @@ private:
 
     template<typename Duration, typename Op>
     auto with_timeout(Duration d, Op&& op) {
+        std::lock_guard lk(ioMutex);
         boost::system::error_code ec;
         with_timeout(d, std::forward<Op>(op), ec);
         if(ec) throw boost::system::system_error(ec);
