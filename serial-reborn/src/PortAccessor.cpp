@@ -12,120 +12,124 @@ PortAccessor::PortAccessor(const SerialDevice &port): serialDevice(port), io() {
     if (!port.isHid) {
         serialPort = std::make_unique<DeadlineSocket<boost::asio::serial_port> >(io);
     }
-    std::thread rxThread([this]() {
-        while (eventLoopRunning.load()) {
-            if (rxQueue.empty()) {
-                std::unique_lock lk(rxQueueMutex);
-                rxQueueCondition.wait_for(lk, std::chrono::milliseconds(100));
-                continue;
-            }
-            try {
-                std::lock_guard lk(queueMutex);
-                if (rxQueue.empty()) {
-                    continue;
+    try {
+        rxEventThread = std::thread([this]() {
+            while (true) {
+                ReceiveDataItem item;
+                {
+                    std::unique_lock lk(rxQueueMutex);
+                    rxQueueCondition.wait(lk, [this] { return !eventLoopRunning.load() || !rxQueue.empty(); });
+                    if (!eventLoopRunning.load()) break;
+                    item = std::move(rxQueue.front());
+                    rxQueue.pop();
                 }
-                ReceiveDataItem item = rxQueue.front();
-                std::vector<uint8_t> packet = item.byteData;
-                std::shared_ptr sharedPacket = std::make_shared<std::vector<uint8_t>>(packet);
-                rxQueue.pop();
-                std::lock_guard guard(callbackMutex);
-                if (item.isOnceRaw) {
-                    std::vector<uint32_t> removable;
-                    for (auto &pair: this->onceRawDataCallbacks) {
-                        if (pair.second(sharedPacket)) {
-                            removable.push_back(pair.first);
+                try {
+                    std::vector<uint8_t> packet = std::move(item.byteData);
+                    std::shared_ptr sharedPacket = std::make_shared<std::vector<uint8_t>>(packet);
+                    std::lock_guard guard(callbackMutex);
+                    if (item.isOnceRaw) {
+                        std::vector<uint32_t> removable;
+                        for (auto &pair: this->onceRawDataCallbacks) {
+                            if (pair.second(sharedPacket)) {
+                                removable.push_back(pair.first);
+                            }
+                        }
+                        for (auto &fd: removable) {
+                            this->onceRawDataCallbacks.erase(fd);
+                        }
+                    } else {
+                        if (printRxTxToStdOut) {
+                            std::cout << "Receive: ";
+                            for (uint8_t b: packet) {
+                                std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(b) << " ";
+                            }
+                            std::cout << std::endl;
+                        }
+                        for (auto &pair: this->dataCallbacks) {
+                            pair.second(sharedPacket);
                         }
                     }
-                    for (auto &fd: removable) {
-                        this->onceRawDataCallbacks.erase(fd);
+                } catch (std::exception &e) {
+                }
+            }
+        });
+        txEventThread = std::thread([this]() {
+            while (true) {
+                SendDataItem packet;
+                {
+                    std::unique_lock lk(txQueueMutex);
+                    txQueueCondition.wait(lk, [this] { return !eventLoopRunning.load() || !txQueue.empty(); });
+                    if (!eventLoopRunning.load() && txQueue.empty()) break;
+                    packet = std::move(txQueue.front());
+                    txQueue.pop();
+                }
+                try {
+                    uint16_t delay = txEventLoopSendDelay.load();
+                    if (delay > 0) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
                     }
-                } else {
-                    if (printRxTxToStdOut) {
-                        std::cout << "Receive: ";
-                        for (uint8_t b: packet) {
-                            std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(b) << " ";
+                    if (packet.isString) {
+                        if (printRxTxToStdOut) {
+                            std::cout << "Send(String): ";
+                            std::cout << packet.strData;
+                            std::cout << std::endl;
                         }
-                        std::cout << std::endl;
-                    }
-                    for (auto &pair: this->dataCallbacks) {
-                        pair.second(sharedPacket);
-                    }
-                }
-            } catch (std::exception &e) {
-            }
-        }
-    });
-    rxThread.detach();
-    rxEventThread = std::move(rxThread);
-
-    std::thread txThread([this]() {
-        while (eventLoopRunning.load()) {
-            if (txQueue.empty()) {
-                std::unique_lock lk(txQueueMutex);
-                txQueueCondition.wait_for(lk, std::chrono::milliseconds(100));
-                continue;
-            }
-            try {
-                std::lock_guard lk(queueMutex);
-                if (txQueue.empty()) {
-                    continue;
-                }
-                SendDataItem packet = txQueue.front();
-                txQueue.pop();
-                uint16_t delay = txEventLoopSendDelay.load();
-                if (delay > 0) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-                }
-                if (packet.isString) {
-                    if (printRxTxToStdOut) {
-                        std::cout << "Send(String): ";
-                        std::cout << packet.strData;
-                        std::cout << std::endl;
-                    }
-                    writeDataToDevice(boost::asio::buffer((packet.strData)));
-                } else {
-                    if (printRxTxToStdOut) {
-                        std::cout << "Send(Hex): ";
-                        for (uint8_t b: packet.byteData) {
-                            std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(b) << " ";
+                        writeDataToDevice(boost::asio::buffer((packet.strData)));
+                    } else {
+                        if (printRxTxToStdOut) {
+                            std::cout << "Send(Hex): ";
+                            for (uint8_t b: packet.byteData) {
+                                std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(b) << " ";
+                            }
+                            std::cout << std::endl;
                         }
-                        std::cout << std::endl;
+                        writeDataToDevice(boost::asio::buffer((packet.byteData)));
                     }
-                    writeDataToDevice(boost::asio::buffer((packet.byteData)));
+                } catch (...) {
                 }
-            } catch (std::exception &e) {
-            }
-        }
-    });
-    txThread.detach();
-    txEventThread = std::move(txThread);
-    unlistenHotPlugCallback = UsbEnumerate::getInstance()->listenHotPlug([this](UsbHotPlugEventType event){
-        if (event == UsbHotPlugEventType::USB_HOT_PLUG_EVENT_ADD && isDead) {
-            try {
-                if (!serialPort->io().stopped()) {
-                    serialPort->io().stop();
+                {
+                    std::lock_guard lk(txQueueMutex);
+                    --txPendingCount;
                 }
-                serialPort->io().restart();
-                openPort();
-                isDead = false;
-            } catch (const std::exception &e) {
-                isDead = true;
-                callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
+                txIdleCondition.notify_all();
             }
-        }
-    });
+        });
+        unlistenHotPlugCallback = UsbEnumerate::getInstance()->listenHotPlug([this](UsbHotPlugEventType event){
+            if (event == UsbHotPlugEventType::USB_HOT_PLUG_EVENT_ADD && isDead) {
+                try {
+                    if (!serialPort->io().stopped()) {
+                        serialPort->io().stop();
+                    }
+                    serialPort->io().restart();
+                    openPort();
+                    isDead = false;
+                } catch (const std::exception &e) {
+                    isDead = true;
+                    callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_DISCONNECTED);
+                }
+            }
+        });
+    } catch (...) {
+        if (unlistenHotPlugCallback) unlistenHotPlugCallback();
+        eventLoopRunning.store(false);
+        rxQueueCondition.notify_all();
+        txQueueCondition.notify_all();
+        if (rxEventThread.joinable()) rxEventThread.join();
+        if (txEventThread.joinable()) txEventThread.join();
+        throw;
+    }
 }
 
 PortAccessor::~PortAccessor() {
-    unlistenHotPlugCallback();
+    if (unlistenHotPlugCallback) unlistenHotPlugCallback();
+    continuousReadRunning.store(false);
+    if (continuousReadThread.joinable()) continuousReadThread.join();
     eventLoopRunning.store(false);
-    if (continuousReadRunning) {
-        continuousReadRunning = false;
-        if (continuousReadThread.joinable()) {
-            continuousReadThread.join();
-        }
-    }
-    closePort();
+    rxQueueCondition.notify_all();
+    txQueueCondition.notify_all();
+    if (rxEventThread.joinable()) rxEventThread.join();
+    if (txEventThread.joinable()) txEventThread.join();
+    try { closePort(); } catch (const std::exception &) {}
 }
 
 void PortAccessor::callConnectionStateCallback(PortAccessorConnectionState state) {
@@ -161,6 +165,7 @@ void PortAccessor::openPort() {
             }
         }
     }
+    isDead = false;
     isOpenFlag = true;
     callConnectionStateCallback(PORT_ACCESSOR_CONNECTION_STATE_CONNECTED);
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -336,7 +341,11 @@ void PortAccessor::writeData(const std::vector<uint8_t> &data) {
         SendDataItem item;
         item.isString = false;
         item.byteData = data;
-        txQueue.push(item);
+        {
+            std::lock_guard lk(txQueueMutex);
+            txQueue.push(std::move(item));
+            ++txPendingCount;
+        }
         txQueueCondition.notify_all();
     } else {
         throw std::runtime_error("Port is not open");
@@ -348,11 +357,20 @@ void PortAccessor::writeData(const std::string &data) {
         SendDataItem item;
         item.isString = true;
         item.strData = data;
-        txQueue.push(item);
+        {
+            std::lock_guard lk(txQueueMutex);
+            txQueue.push(std::move(item));
+            ++txPendingCount;
+        }
         txQueueCondition.notify_all();
     } else {
         throw std::runtime_error("Port is not open");
     }
+}
+
+bool PortAccessor::waitForPendingWrites(std::chrono::milliseconds timeout) {
+    std::unique_lock lk(txQueueMutex);
+    return txIdleCondition.wait_for(lk, timeout, [this] { return txPendingCount == 0; });
 }
 
 void PortAccessor::writeDataToDevice(const boost::asio::const_buffer &buffer) {
@@ -378,20 +396,11 @@ void PortAccessor::writeDataToDevice(const boost::asio::const_buffer &buffer) {
 
 
 void PortAccessor::stopContinuousRead() {
-    if (isOpen()) {
-        if (continuousReadStartCount.load() > 1) {
-            continuousReadStartCount.fetch_sub(1);
-            return;
-        }
-        continuousReadStartCount.fetch_sub(1);
-        continuousReadRunning = false;
-        if (continuousReadThread.joinable()) {
-            continuousReadThread.join();
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    } else {
-        throw std::runtime_error("Port is not open");
-    }
+    const auto count = continuousReadStartCount.load();
+    if (count == 0) return;
+    if (continuousReadStartCount.fetch_sub(1) > 1) return;
+    continuousReadRunning.store(false);
+    if (continuousReadThread.joinable()) continuousReadThread.join();
 }
 
 void PortAccessor::setPacketRealignmentHelper(std::unique_ptr<PacketRealignmentHelper> helper) {
@@ -421,7 +430,7 @@ void PortAccessor::startContinuousRead() {
         continuousReadRunning = true;
         continuousReadThread = std::thread([this] {
             while (continuousReadRunning) {
-                if (isDead || !this->serialPort->socket().is_open()) {
+                if (!serialDevice.isHid && (isDead || !this->serialPort->socket().is_open())) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 }
                 try {
@@ -452,8 +461,13 @@ void PortAccessor::startContinuousRead() {
                         continue;
                     }
 
-                    if (!onceRawDataCallbacks.empty()) {
-                        std::lock_guard lk(queueMutex);
+                    bool hasRawCallbacks;
+                    {
+                        std::lock_guard lk(callbackMutex);
+                        hasRawCallbacks = !onceRawDataCallbacks.empty();
+                    }
+                    if (hasRawCallbacks) {
+                        std::lock_guard lk(rxQueueMutex);
                         ReceiveDataItem item{};
                         item.isOnceRaw = true;
                         item.byteData = data;
@@ -470,7 +484,7 @@ void PortAccessor::startContinuousRead() {
                                 if (packet.empty()) {
                                     continue;
                                 }
-                                std::lock_guard lk(queueMutex);
+                                std::lock_guard lk(rxQueueMutex);
                                 ReceiveDataItem item{};
                                 item.isOnceRaw = false;
                                 item.byteData = packet;
@@ -479,7 +493,7 @@ void PortAccessor::startContinuousRead() {
                             }
                         }
                     } else {
-                        std::lock_guard lk(queueMutex);
+                        std::lock_guard lk(rxQueueMutex);
                         ReceiveDataItem item{};
                         item.isOnceRaw = false;
                         item.byteData = data;

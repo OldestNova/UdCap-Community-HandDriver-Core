@@ -25,7 +25,7 @@ public:
                 num1 += weight[i][j] * numArray[j];
             }
             double num2 = static_cast<int>(num1 / 10.0) / 10.0 + w0[i];
-            if (i == 0 || i == 1 || i == 5 || i == 8 || i == 11 || i == 14) {
+            if (i == 0 || i == 5 || i == 8 || i == 11 || i == 14) {
                 num2 = std::min(num2, 0.0);
                 num2 = std::max(num2, -80.0);
             }
@@ -52,11 +52,10 @@ public:
             }
             doubleList.push_back(num2);
         }
-        doubleList[20] = 0.6 * doubleList[2] - 5.0;
         if (doubleList[2] > -10.0) {
             doubleList[3] -= 2.5 * (doubleList[2] + 10.0);
-            if (doubleList[3] > 30.0)
-                doubleList[3] = 30.0;
+            if (doubleList[3] > 35.0)
+                doubleList[3] = 35.0;
             doubleList[1] -= 2.0 * (doubleList[2] + 10.0);
         }
         if (doubleList[2] < -10.0) {
@@ -64,6 +63,11 @@ public:
             if (doubleList[3] < 20.0)
                 doubleList[3] = 20.0;
         }
+        if (doubleList[0] < -60.0) doubleList[0] = -60.0;
+        if (doubleList[1] > 0.0) doubleList[1] = 0.0;
+        if (doubleList[1] < -60.0) doubleList[1] = -60.0;
+        if (doubleList[2] < -70.0) doubleList[2] = -70.0;
+        doubleList[20] = 0.6 * doubleList[2] - 5.0;
         if (doubleList[7] > 25.0)
             doubleList[7] = 25.0;
         if (doubleList[15] > 15.0)
@@ -71,10 +75,17 @@ public:
         if (doubleList[19] > 35.0)
             doubleList[19] = 35.0;
         if (doubleList[19] > 5.0) {
-            doubleList[3] += doubleList[19] - 5.0;
-            if (doubleList[3] > 35.0)
-                doubleList[3] = 35.0;
+            doubleList[3] += 1.3 * (doubleList[19] - 5.0);
         }
+        if (doubleList[3] > 15.0) doubleList[3] = 15.0;
+        if (doubleList[19] < 7.0) {
+            doubleList[19] *= 3.0;
+        } else {
+            doubleList[19] += 14.0;
+            if (doubleList[19] > 35.0) doubleList[19] = 35.0;
+        }
+        if (doubleList[18] > -30.0 && doubleList[15] > doubleList[19])
+            doubleList[15] = doubleList[19];
         if (doubleList[5] < 0.0) {
             doubleList[7] += 0.15 * doubleList[5];
             if (doubleList[7] < 0.0)
@@ -96,8 +107,12 @@ public:
             if (doubleList[6] < -80.0)
                 doubleList[6] = -80.0;
         }
-        if (doubleList[10] < -20.0) {
-            doubleList[10] = 1.2 * doubleList[10] + 4.0;
+        if (doubleList[9] < -45.0) {
+            doubleList[9] = 1.4 * doubleList[9] + 18.0;
+            if (doubleList[9] < -100.0) doubleList[9] = -100.0;
+        }
+        if (doubleList[10] < -40.0) {
+            doubleList[10] = 1.4 * doubleList[10] + 16.0;
             if (doubleList[10] < -80.0)
                 doubleList[10] = -80.0;
         }
@@ -130,14 +145,6 @@ public:
             if (doubleList[19] < 0.0)
                 doubleList[19] = 0.0;
         }
-        if (doubleList[0] < -60.0)
-            doubleList[0] = -60.0;
-        if (doubleList[1] > 0.0)
-            doubleList[1] = 0.0;
-        if (doubleList[1] < -60.0)
-            doubleList[1] = -60.0;
-        if (doubleList[2] < -70.0)
-            doubleList[2] = -70.0;
         doubleList[4] = 0.8 * doubleList[5];
         doubleList[8] = 0.8 * doubleList[9];
         doubleList[12] = 0.8 * doubleList[13];
@@ -156,7 +163,7 @@ public:
     }
 
 private:
-    const std::string VERSION = "V 1.4.4";
+    const std::string VERSION = "V 1.4.9b";
     const double weight[19][12] = {
         {
             -150.0,
@@ -239,10 +246,10 @@ private:
             35.0,
             0.0,
             0.0,
-            -5.0,
+            -3.0,
             0.0,
             0.0,
-            -4.0,
+            -6.0,
             -3.0
         },
         {
@@ -266,10 +273,10 @@ private:
             0.0,
             5.0,
             0.0,
-            -70.0,
+            -80.0,
             0.0,
-            -15.0,
-            -2.0,
+            -5.0,
+            -5.0,
             0.0,
             -2.0
         },
@@ -355,10 +362,10 @@ private:
             0.0,
             0.0,
             0.0,
+            10.0,
             0.0,
             0.0,
-            0.0,
-            40.0,
+            35.0,
             0.0
         },
         {
@@ -389,6 +396,7 @@ private:
         30.0,
         0.0,
         0.0,
+        -2.0,
         0.0,
         0.0,
         0.0,
@@ -397,8 +405,7 @@ private:
         0.0,
         0.0,
         0.0,
-        0.0,
-        0.0,
+        -2.0,
         -10.0,
         0.0,
         0.0

@@ -14,6 +14,8 @@
 #include <hidapi.h>
 #include <map>
 #include <queue>
+#include <chrono>
+#include <condition_variable>
 
 enum StopBit {
     STOPBIT_1,
@@ -73,6 +75,7 @@ public:
     std::vector<uint8_t> readData();
     void writeData(const std::vector<uint8_t>&);
     void writeData(const std::string&);
+    bool waitForPendingWrites(std::chrono::milliseconds timeout);
 
     void setPacketRealignmentHelper(std::unique_ptr<PacketRealignmentHelper> helper);
     bool hasPacketRealignmentHelper() const;
@@ -85,7 +88,7 @@ public:
     std::function<void()> addOnceRawDataCallback(std::function<bool(std::shared_ptr<std::vector<uint8_t>>)>);
     void setPrintRxTxToStdOut(bool enable);
 private:
-    bool isDead = false;
+    std::atomic_bool isDead = false;
     std::function<void()> unlistenHotPlugCallback;
     bool printRxTxToStdOut = false;
     std::atomic_uint32_t callbackFd = 0;
@@ -98,11 +101,10 @@ private:
     size_t readSize = 64;
     size_t timeout = 700;
     std::mutex ioMutex;
-    bool isOpenFlag = false;
-    std::mutex queueMutex;
+    std::atomic_bool isOpenFlag = false;
     std::thread continuousReadThread;
     std::mutex callbackMutex;
-    bool continuousReadRunning = false;
+    std::atomic_bool continuousReadRunning = false;
     std::atomic_int32_t continuousReadStartCount = 0;
     std::unique_ptr<PacketRealignmentHelper> packetRealignmentHelper;
     std::map<uint32_t, std::function<void(std::shared_ptr<std::vector<uint8_t>>)>> dataCallbacks;
@@ -122,6 +124,8 @@ private:
     std::queue<SendDataItem> txQueue;
     std::mutex txQueueMutex;
     std::condition_variable txQueueCondition;
+    std::condition_variable txIdleCondition;
+    std::size_t txPendingCount = 0;
 };
 
 

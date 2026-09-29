@@ -4,6 +4,7 @@
 
 #include <utility>
 #include "UdCapProbe.h"
+#include "UdCapSerial.h"
 
 std::vector<std::vector<uint8_t>> UdCapProbePacketRealignmentHelper::processPacket(const std::vector<uint8_t> &data) {
     std::vector<std::vector<uint8_t> > packets;
@@ -22,16 +23,24 @@ std::vector<std::vector<uint8_t>> UdCapProbePacketRealignmentHelper::processPack
                     packetBuffer.push_back('U');
                     packetBuffer.push_back('D');
                 } else {
-                    this->stateMachine = UDCAP_PROBE_STATE_NONE;
+                    this->stateMachine = byte == 'U' ? UDCAP_PROBE_STATE_GET_HEADER_U
+                                                     : UDCAP_PROBE_STATE_NONE;
                 }
                 break;
             }
             case UDCAP_PROBE_STATE_GET_HEADER_UD: {
-                if (byte != '\r') {
-                    packetBuffer.push_back(byte);
-                } else {
-                    packets.push_back(packetBuffer);
+                if (byte == '\r' || byte == '\n') {
+                    const std::string serial(packetBuffer.begin(), packetBuffer.end());
+                    if (isUdCapReceiverSerial(serial)) packets.push_back(packetBuffer);
+                    packetBuffer.clear();
                     this->stateMachine = UDCAP_PROBE_STATE_NONE;
+                } else if (byte < '0' || (byte > '9' && byte < 'A') || byte > 'Z' ||
+                           packetBuffer.size() >= 32) {
+                    packetBuffer.clear();
+                    this->stateMachine = byte == 'U' ? UDCAP_PROBE_STATE_GET_HEADER_U
+                                                     : UDCAP_PROBE_STATE_NONE;
+                } else {
+                    packetBuffer.push_back(byte);
                 }
                 break;
             }
@@ -47,7 +56,22 @@ UdCapProbe::UdCapProbe(std::shared_ptr<PortAccessor> portAccessor): portAccessor
 UdCapProbe::~UdCapProbe() = default;
 
 UdCapProbeType UdCapProbe::probe() {
-    std::function<void()> unlisten = [](){};
+    std::function<void()> unlistenData;
+    std::unique_ptr<PacketRealignmentHelper> previousHelper;
+    bool helperChanged = false;
+    bool startRequested = false;
+    const bool openedHere = !portAccessor->isOpen();
+    auto cleanup = [&]() {
+        if (unlistenData) unlistenData();
+        if (startRequested) {
+            portAccessor->stopContinuousRead();
+            startRequested = false;
+        }
+        if (helperChanged) {
+            portAccessor->setPacketRealignmentHelper(std::move(previousHelper));
+            helperChanged = false;
+        }
+    };
     try {
         this->udCapSerial = "";
         portAccessor->openPort();
@@ -55,51 +79,60 @@ UdCapProbeType UdCapProbe::probe() {
         portAccessor->setReadSize(8);
         std::mutex mutex;
         std::condition_variable condition;
-        std::string uds = "";
-        std::unique_ptr<PacketRealignmentHelper> pPacketRealignmentHelper = portAccessor->popPacketRealignmentHelper();
+        std::string response;
+        std::size_t responseCount = 0;
+        previousHelper = portAccessor->popPacketRealignmentHelper();
+        helperChanged = true;
         portAccessor->setPacketRealignmentHelper(std::make_unique<UdCapProbePacketRealignmentHelper>());
-        unlisten = portAccessor->addDataCallback([this, &uds, &condition](std::shared_ptr<std::vector<uint8_t>> data) {
-            uds = std::string(data->begin(), data->end());
+        unlistenData = portAccessor->addDataCallback([&](std::shared_ptr<std::vector<uint8_t>> data) {
+            {
+                std::lock_guard lk(mutex);
+                response.assign(data->begin(), data->end());
+                ++responseCount;
+            }
             condition.notify_all();
         });
-        portAccessor->addOnceRawDataCallback([&condition](std::shared_ptr<std::vector<uint8_t>> data){
-            condition.notify_all();
-            return true;
-        });
+        startRequested = true;
         portAccessor->startContinuousRead();
-        std::string s = "AT+NAME?\r\n";
-        portAccessor->writeData(s);
-        std::unique_lock lk(mutex);
-        auto state = condition.wait_for(lk, std::chrono::seconds(1));
-        if (state == std::cv_status::timeout) {
-            unlisten();
-            portAccessor->stopContinuousRead();
-            portAccessor->setPacketRealignmentHelper(std::move(pPacketRealignmentHelper));
-            this->udCapSerial = "";
+        bool succeeded = false;
+        std::vector<std::string> seenResponses;
+        for (int attempt = 0; attempt < 3 && !succeeded; ++attempt) {
+            std::size_t previousCount;
+            {
+                std::lock_guard lk(mutex);
+                previousCount = responseCount;
+            }
+            portAccessor->writeData("AT+NAME?\r\n");
+            std::unique_lock lk(mutex);
+            if (!condition.wait_for(lk, std::chrono::milliseconds(1500),
+                                    [&] { return responseCount > previousCount; })) {
+                // A non-UdCap serial adapter is common in the port list. Do
+                // not spend three full timeouts on it; the UI retries later.
+                if (attempt == 0) break;
+                continue;
+            }
+            if (std::find(seenResponses.begin(), seenResponses.end(), response) != seenResponses.end()) {
+                this->udCapSerial = response;
+                succeeded = true;
+            } else {
+                seenResponses.push_back(response);
+            }
+        }
+        cleanup();
+        if (!succeeded) {
+            this->udCapSerial.clear();
+            if (openedHere) portAccessor->closePort();
             return UDCAP_PROBE_FAILURE;
         }
-        state = condition.wait_for(lk, std::chrono::seconds(3));
-        unlisten();
-        portAccessor->stopContinuousRead();
-        portAccessor->setPacketRealignmentHelper(std::move(pPacketRealignmentHelper));
-        if (state == std::cv_status::timeout) {
-            this->udCapSerial = "";
-            return UDCAP_PROBE_FAILURE;
-        }
-        this->udCapSerial = uds;
         return UDCAP_PROBE_HAND_V1;
-    } catch (std::runtime_error&) {
-        this->udCapSerial = "";
-        if (portAccessor->isOpen()) {
-            this->portAccessor->stopContinuousRead();
+    } catch (const std::exception &) {
+        try { cleanup(); } catch (const std::exception &) {}
+        this->udCapSerial.clear();
+        if (openedHere) {
+            try { portAccessor->closePort(); } catch (const std::exception &) {}
         }
         return UDCAP_PROBE_FAILURE;
     }
-    this->udCapSerial = "";
-    if (portAccessor->isOpen()) {
-        this->portAccessor->stopContinuousRead();
-    }
-    return UDCAP_PROBE_FAILURE;
 }
 
 std::string UdCapProbe::getUDCapSerial() {

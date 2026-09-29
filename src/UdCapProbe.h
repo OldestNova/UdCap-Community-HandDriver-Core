@@ -29,7 +29,7 @@ public:
 
 private:
     std::vector<uint8_t> packetBuffer;
-    volatile UdCapProbeStateMachine stateMachine = UDCAP_PROBE_STATE_NONE;
+    UdCapProbeStateMachine stateMachine = UDCAP_PROBE_STATE_NONE;
 };
 
 class UdCapProbe {
@@ -42,7 +42,6 @@ public:
 private:
     std::shared_ptr<PortAccessor> portAccessor;
     std::string udCapSerial;
-    UdCapProbeStateMachine stateMachine = UDCAP_PROBE_STATE_NONE;
 };
 
 

@@ -6,9 +6,21 @@
 #define SERIALREBORN_UDCAPV1CORE_H
 
 #include <map>
+#include <optional>
+#include <atomic>
 #include <chrono>
+#include <array>
+#include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <PortAccessor.h>
 #include <queue>
+#include <string>
+#include <thread>
+#include <vector>
+#include "CommunityV1Calibration.h"
+#include "HandResponse.h"
 
 #define Default_xCenterData 1850.0;
 #define Default_yCenterData 1850.0;
@@ -46,6 +58,7 @@ enum CommandType {
     CMD_SET_CHANNEL_DONE = 10,
     CMD_FW_VERSION = 11,
     CMD_PAIRING = 12,
+    CMD_PAIRING_BOTH = 30,
     CMD_STOP_DATA = 160
 };
 
@@ -130,11 +143,18 @@ struct UdCapV1MCUPacket {
     uint16_t channelResult;
     std::string fwVersion;
     uint16_t battery;
+    uint16_t batteryRaw;
+    // Signed receiver RSSI, in dBm. Zero means telemetry is unavailable.
+    int16_t rssiDbm;
     std::string deviceSerialNum;
     bool isReady;
     bool isEnterprise;
     std::array<int16_t, 19> angle;
     std::array<double, 28> result;
+    // Snapshot accompanying CMD_ANGLE. Scalar protocols project supported axes;
+    // skeleton protocols apply all local XYZ offsets before their own mapping.
+    HandRotation angleBoneOffset{};
+    UdTarget angleHand = UD_TARGET_UNKNOWN;
     UdCapV1JoystickData joystickData {};
     UdCapV1ButtonData button {};
     HandQuaternion skeletonQuaternion {};
@@ -251,6 +271,12 @@ enum UdCapV1DeviceCaliType {
     UDCAP_V1_DEVICE_CALI_TYPE_JOYSTICK = 1,
 };
 
+enum class UdCapV1Algorithm {
+    DEFAULT = 0,
+    ORIGINAL_V1 = 1,
+    COUMMUNITY_V1 = 20
+};
+
 enum HandBone {
     HAND_BONE_THUMB_PROXIMAL = 0,
     HAND_BONE_THUMB_INTERMEDIATE = 1,
@@ -290,13 +316,32 @@ public:
 
     UdTarget getTarget() const;
 
+    void setFallbackTarget(UdTarget hand);
+
+    UdState getState() const;
+
+    // The glove reports a five-step battery indicator and its raw ADC value.
+    // Newer receivers append signed RSSI as the third battery-packet byte.
+    std::optional<std::pair<uint16_t, uint16_t>> getBattery() const;
+    std::optional<int16_t> getRssiDbm() const;
+
     std::string getUDCapSerial() const;
 
-    BoneQuaternion eulerToQuaternion(double pitch, double yaw, double roll);
+    static BoneQuaternion eulerToQuaternion(double pitch, double yaw, double roll);
+
+    static HandQuaternion officialHandPose(const std::array<double, 28> &angles,
+                                           UdTarget hand, const HandRotation &offset,
+                                           const std::array<float, 3> &thumbFix);
 
     void mcuStopData();
 
+    void stopStreamingForShutdown();
+
+    bool waitForPendingWrites(std::chrono::milliseconds timeout) const;
+
     void mcuStartData();
+
+    void mcuResumeData();
 
     void mcuGetSerialNum();
 
@@ -309,6 +354,11 @@ public:
     void mcuStartPairing();
 
     void mcuStopPairing();
+
+    // New receivers can pair both gloves through one receiver (60 s by default).
+    void mcuStartPairingBoth(uint8_t timeoutSeconds = 60);
+
+    void mcuStopPairingBoth();
 
     void mcuGetFirmwareVersion();
 
@@ -325,6 +375,10 @@ public:
     void completeCalibration(UdCapV1DeviceCaliType type);
 
     void tryRestoreHandCalibration();
+
+    void setAlgorithm(UdCapV1Algorithm algorithm);
+
+    UdCapV1Algorithm getAlgorithm() const;
 
     void captureJoystickData(UdCapV1JoystickCaliType type);
 
@@ -351,6 +405,8 @@ public:
     void setHandOffset(HandBone bone, float v);
     void setHandOffset(HandRotation r);
     HandRotation getHandOffset() const;
+    void setHandResponse(const HandResponseSettings &settings);
+    HandResponseSettings getHandResponse() const;
 
     bool loadPref();
 
@@ -373,20 +429,33 @@ private:
     std::function<void()> unlistenPortCallback;
     std::function<void()> unlistenPortConnectionStateCallback;
     std::shared_ptr<PortAccessor> portAccessor;
+    mutable std::recursive_mutex stateMutex;
     std::string udCapSerial;
-    volatile UdTarget target = UD_TARGET_UNKNOWN;
-    std::map<uint32_t, std::function<void(std::shared_ptr<UdCapV1MCUPacket>)> > listenCallbacks;
-    std::recursive_mutex callbackMutex;
+    std::atomic<UdTarget> target = UD_TARGET_UNKNOWN;
+    struct CallbackSlot {
+        std::function<void(std::shared_ptr<UdCapV1MCUPacket>)> callback;
+        std::recursive_mutex executionMutex;
+        bool active = true;
+    };
+    std::map<uint32_t, std::shared_ptr<CallbackSlot>> listenCallbacks;
+    std::mutex callbackMutex;
     uint16_t lastBattery = 0;
-    bool isEnterprise = false;
-    volatile UdState udState = UD_INIT_STATE_INIT;
-    volatile UdCapV1HandCaliStat caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
+    uint16_t lastBatteryRaw = 0;
+    int16_t lastRssiDbm = 0;
+    std::atomic_bool isEnterprise = false;
+    std::atomic<UdState> udState = UD_INIT_STATE_INIT;
+    std::recursive_mutex streamingMutex;
+    bool streamingShutdown = false;
+    std::atomic<UdCapV1HandCaliStat> caliStat = UDCAP_V1_HAND_CALI_STAT_NONE;
     UdCapV1HandCaliFist caliFist;
     UdCapV1HandCaliAdduction caliAdduction;
     UdCapV1HandCaliProtract caliProtract;
+    UdCapV1Algorithm algorithm = UdCapV1Algorithm::DEFAULT;
+    CommunityV1Calibration communityCalibration;
+    bool communityCalibrationNeedsReset = true;
     UdCapV1HandData lastAngle{};
     UdCapV1LastCaliData lastCaliData;
-    volatile UdCapV1JoystickCaliStat joystickCaliStat = UDCAP_V1_JOYSTICK_CALI_STAT_OK;
+    std::atomic<UdCapV1JoystickCaliStat> joystickCaliStat = UDCAP_V1_JOYSTICK_CALI_STAT_OK;
     float xCenterData = 1850.0;
     float yCenterData = 1850.0;
     float xMaxData = 3750.0;
@@ -400,10 +469,11 @@ private:
     float gripMin = 0.5f;
     float trackpadMax = 1.0f;
     float trackpadMin = 0.5f;
-    HandRotation handOffset;
+    HandRotation handOffset{};
+    HandResponseSettings handResponse = defaultHandResponse();
     bool thumbOn = true;
-    bool isSettingChannel = false;
-    float thumbFix[3] = { 0.1f, 0.3f, 1.2f };
+    // Official thumb root Y, Z and X gains, respectively.
+    std::array<float, 3> thumbFix{0.3f, 0.3f, 1.2f};
 
     std::chrono::system_clock::time_point powerButtonTimeout;
     bool powerBtnPressed = false;

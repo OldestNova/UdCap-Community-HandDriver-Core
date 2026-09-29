@@ -53,15 +53,22 @@ UsbEnumerate::UsbEnumerate() {
 
 UsbEnumerate::~UsbEnumerate() {
 #ifdef WIN32
-    isHotPlugRunning = false;
+    isHotPlugRunning.store(false);
+    {
+        std::unique_lock lock(hotPlugStartMutex);
+        hotPlugStartCondition.wait(lock, [this] { return hotPlugStarted; });
+        if (hotPlugThreadId != 0) PostThreadMessage(hotPlugThreadId, WM_QUIT, 0, 0);
+    }
     if (hotPlugThread.joinable()) {
         hotPlugThread.join();
     }
 #else
+    isHotPlugRunning.store(false);
     libusb_hotplug_deregister_callback(nullptr, nullptr);
 #endif
     libusb_exit(nullptr);
     this->eventLoopRunning.store(false);
+    this->eventCondition.notify_all();
     this->eventLoopThread.join();
 }
 
@@ -124,6 +131,15 @@ int hotplug_callback(struct libusb_context *ctx, struct libusb_device *dev,
 void UsbEnumerate::initHotPlug() {
 #ifdef WIN32
     hotPlugThread = std::thread([this]() {
+        MSG msg{};
+        PeekMessage(&msg, nullptr, WM_USER, WM_USER, PM_NOREMOVE); // Ensure this thread has a message queue.
+        {
+            std::lock_guard lock(hotPlugStartMutex);
+            hotPlugThreadId = GetCurrentThreadId();
+            hotPlugStarted = true;
+        }
+        hotPlugStartCondition.notify_one();
+        if (!isHotPlugRunning.load()) return;
         HINSTANCE hInstance = GetModuleHandle(nullptr);
         const char CLASS_NAME[] = "USBMonitorClass";
         WNDCLASS wc = { };
@@ -144,16 +160,11 @@ void UsbEnumerate::initHotPlug() {
             std::cerr << "Failed to create window for USB monitoring." << std::endl;
             return;
         }
-        MSG msg = { };
-        while (isHotPlugRunning)
-        {
-            if (GetMessage(&msg, nullptr, 0, 0)) {
-                if (msg.message == WM_QUIT || msg.message == WM_DESTROY) {
-                    break;
-                }
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
+        while (isHotPlugRunning.load()) {
+            const int result = GetMessage(&msg, nullptr, 0, 0);
+            if (result <= 0) break;
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
         DestroyWindow(hwnd);
         UnregisterClass(CLASS_NAME, hInstance);
@@ -197,7 +208,9 @@ void UsbEnumerate::callHotPlugCallback(UsbHotPlugEventType eventType) {
     eventCondition.notify_all();
 }
 
-void UsbEnumerate::refresh(UsbEnumerateRefreshType type) {
+void UsbEnumerate::refresh(UsbEnumerateRefreshType type,
+                           const std::function<bool(uint16_t, uint16_t)> &serialDeviceFilter,
+                           bool firstSerialPortOnly) {
     this->devices.clear();
     if (type == UsbEnumerateRefreshType::USB_ENUMERATE_REFRESH_ALL || type ==
         UsbEnumerateRefreshType::USB_ENUMERATE_REFRESH_SERIAL) {
@@ -207,12 +220,49 @@ void UsbEnumerate::refresh(UsbEnumerateRefreshType type) {
                 // Print the USB device info.
                 uint16_t vendorId = device.get_vendor_id();
                 uint16_t productId = device.get_product_id();
+                if (serialDeviceFilter && !serialDeviceFilter(vendorId, productId)) continue;
                 try {
                     std::string serialNumber = "";
                     try {
                         serialNumber = device.get_serial_number();
                     } catch (const libusbp::error &) {
                         serialNumber = "";
+                    }
+
+                    if (firstSerialPortOnly) {
+                        // A receiver exposes one COM port. Try the usual non-composite
+                        // interface first so CH340-style devices avoid 255 failed probes.
+                        try {
+                            libusbp::serial_port port(device, 0, false);
+                            SerialDevice serialDevice{};
+                            serialDevice.isHid = false;
+                            serialDevice.vid = vendorId;
+                            serialDevice.pid = productId;
+                            serialDevice.serialNumber = serialNumber;
+                            serialDevice.interfaceNumber = 0;
+                            serialDevice.composite = false;
+                            serialDevice.portName = port.get_name();
+                            this->devices.push_back(std::move(serialDevice));
+                            continue;
+                        } catch (const libusbp::error &) {
+                        }
+                        for (uint32_t i = 0; i < 255; ++i) {
+                            try {
+                                libusbp::serial_port port(device, i, true);
+                                SerialDevice serialDevice{};
+                                serialDevice.isHid = false;
+                                serialDevice.vid = vendorId;
+                                serialDevice.pid = productId;
+                                serialDevice.serialNumber = serialNumber;
+                                serialDevice.interfaceNumber = i;
+                                serialDevice.composite = true;
+                                serialDevice.portName = port.get_name();
+                                this->devices.push_back(std::move(serialDevice));
+                                break;
+                            } catch (const libusbp::error &) {
+                            }
+                        }
+                        continue;
                     }
 
                     bool success = false;

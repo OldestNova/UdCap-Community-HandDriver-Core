@@ -13,8 +13,7 @@ std::filesystem::path CorePref::getPrefPath() const {
 }
 
 CorePref::CorePref() {
-    std::filesystem::path prefDir("prefs");
-    this->prefPath = std::filesystem::relative(std::filesystem::current_path(), prefDir).string();
+    this->prefPath = std::filesystem::current_path() / "prefs";
 }
 
 CorePref& CorePref::getInstance() {

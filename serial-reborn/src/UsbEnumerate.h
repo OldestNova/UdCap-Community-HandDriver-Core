@@ -13,6 +13,9 @@
 #include <utility>
 #include <map>
 #include <queue>
+#include <atomic>
+#include <condition_variable>
+#include <thread>
 
 
 enum UsbEnumerateRefreshType {
@@ -26,9 +29,6 @@ enum UsbHotPlugEventType {
     USB_HOT_PLUG_EVENT_REMOVE = 1
 };
 
-#ifdef WIN32
-
-#endif
 class UsbEnumerate {
 private:
     void initHotPlug();
@@ -36,7 +36,13 @@ private:
     static std::shared_ptr<UsbEnumerate> _instance;
     static std::mutex _mtx;
     std::thread hotPlugThread;
-    bool isHotPlugRunning = true;
+    std::atomic_bool isHotPlugRunning{true};
+#ifdef WIN32
+    std::mutex hotPlugStartMutex;
+    std::condition_variable hotPlugStartCondition;
+    bool hotPlugStarted = false;
+    unsigned long hotPlugThreadId = 0;
+#endif
     std::map<uint32_t, std::function<void(UsbHotPlugEventType)>> listenHotPlugCallbacks;
     std::recursive_mutex hotPlugMutex;
     std::atomic_uint32_t hotPlugFd = 0;
@@ -51,7 +57,9 @@ public:
     void callHotPlugCallback(UsbHotPlugEventType);
     std::function<void()> listenHotPlug(const std::function<void(UsbHotPlugEventType)> &callback);
     static std::shared_ptr<UsbEnumerate> getInstance();
-    void refresh(UsbEnumerateRefreshType type);
+    void refresh(UsbEnumerateRefreshType type,
+                 const std::function<bool(uint16_t, uint16_t)> &serialDeviceFilter = {},
+                 bool firstSerialPortOnly = false);
     void printDevices();
     std::vector<SerialDevice> findPorts(std::function<bool(const SerialDevice&)>);
     ~UsbEnumerate();

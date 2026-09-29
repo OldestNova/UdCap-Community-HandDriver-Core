@@ -71,13 +71,18 @@ public:
 private:
     using Timer = aio::basic_waitable_timer<Clock>;
     std::mutex ioMutex;
+    bool mTimedOut = false;
 
     template<typename Duration, typename Op>
     auto with_timeout(Duration d, Op&& op, boost::system::error_code& ec) {
+        mTimedOut = false;
         mTimer.expires_after(d);
         ec = aio::error::would_block;
         op(mSocket, ec);
         do mService.run_one(); while(ec == aio::error::would_block);
+        mTimer.expires_at(std::chrono::time_point<Clock>::max());
+        if (mTimedOut && ec == aio::error::operation_aborted)
+            ec = aio::error::timed_out;
     }
 
     template<typename Duration, typename Op>
@@ -90,6 +95,7 @@ private:
 
     void check_timeout() {
         if(mTimer.expiry() <= Clock::now()){
+            mTimedOut = true;
             mSocket.cancel();
             mTimer.expires_at(std::chrono::time_point<Clock>::max());
         }

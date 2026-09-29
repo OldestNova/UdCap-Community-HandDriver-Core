@@ -1,6 +1,8 @@
 /cmake-build-release
 /cmake-build-debug
 /build
+/build-*/
+/vcpkg_installed/
 .DS_Store
 Thumbs.db
 /.idea

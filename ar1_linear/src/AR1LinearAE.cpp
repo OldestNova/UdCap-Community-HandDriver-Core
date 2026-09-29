@@ -25,7 +25,7 @@ public:
                 num1 += weight[i][j] * numArray[j];
             }
             double num2 = static_cast<int>(num1 / 10.0) / 10.0 + w0[i];
-            if (i == 0 || i == 1 || i == 5 || i == 8 || i == 11 || i == 14) {
+            if (i == 0 || i == 5 || i == 8 || i == 11 || i == 14) {
                 num2 = std::min(num2, 0.0);
                 num2 = std::max(num2, -80.0);
             }

@@ -30,7 +30,7 @@ public:
                 num2 = std::max(num2, -80.0);
             }
             if (i == 2 && num2 > 0.0) {
-                num2 = 35.0;
+                num2 = 0.0;
             }
             if (i == 3) {
                 if (num2 < 5.0)
