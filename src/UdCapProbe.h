@@ -10,7 +10,8 @@
 
 enum UdCapProbeType {
     UDCAP_PROBE_FAILURE = 0,
-    UDCAP_PROBE_HAND_V1 = 1
+    UDCAP_PROBE_HAND_V1 = 1,
+    UDP_PROBE_HAND_V1_COMBINED_V1 = 2
 };
 
 enum UdCapProbeStateMachine {

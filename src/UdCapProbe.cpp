@@ -31,11 +31,13 @@ std::vector<std::vector<uint8_t>> UdCapProbePacketRealignmentHelper::processPack
             case UDCAP_PROBE_STATE_GET_HEADER_UD: {
                 if (byte == '\r' || byte == '\n') {
                     const std::string serial(packetBuffer.begin(), packetBuffer.end());
-                    if (isUdCapReceiverSerial(serial)) packets.push_back(packetBuffer);
+                    if (isUdCapReceiverSerial(serial) || isUdCapCombinedV1ReceiverSerial(serial)) {
+                        packets.push_back(packetBuffer);
+                    }
                     packetBuffer.clear();
                     this->stateMachine = UDCAP_PROBE_STATE_NONE;
-                } else if (byte < '0' || (byte > '9' && byte < 'A') || byte > 'Z' ||
-                           packetBuffer.size() >= 32) {
+                } else if ((byte != ',' && (byte < '0' || (byte > '9' && byte < 'A') || byte > 'Z')) ||
+                           packetBuffer.size() >= 8 + 32) {
                     packetBuffer.clear();
                     this->stateMachine = byte == 'U' ? UDCAP_PROBE_STATE_GET_HEADER_U
                                                      : UDCAP_PROBE_STATE_NONE;
@@ -124,7 +126,8 @@ UdCapProbeType UdCapProbe::probe() {
             if (openedHere) portAccessor->closePort();
             return UDCAP_PROBE_FAILURE;
         }
-        return UDCAP_PROBE_HAND_V1;
+        return isUdCapCombinedV1ReceiverSerial(this->udCapSerial)
+                   ? UDP_PROBE_HAND_V1_COMBINED_V1 : UDCAP_PROBE_HAND_V1;
     } catch (const std::exception &) {
         try { cleanup(); } catch (const std::exception &) {}
         this->udCapSerial.clear();

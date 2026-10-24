@@ -126,6 +126,19 @@ level and the raw measurement through `UdCapV1MCUPacket` and `getBattery()`.
 `getRssiDbm()` returns the latest signed RSSI. Both getters return
 `std::nullopt` until telemetry arrives or after the glove disconnects.
 
+## Combined V1 接收器探测
+
+`UdCapProbe::probe()` 支持 `AT+NAME?` 返回 `UDXST1L,AHST000019D`
+或 `UDXST1R,AHST000019D`，成功时返回 `UDP_PROBE_HAND_V1_COMBINED_V1 = 2`。
+逗号前必须是 `UDXST1L` 或 `UDXST1R`；逗号后是以 `AH` 开头的
+6～32 位大写字母、数字序列号，不要求以 `L` 或 `R` 结尾。
+与旧格式一样，响应以 CR 或 LF 结束，探测需要两次一致的有效响应。
+`getUDCapSerial()` 保留完整文本（包含逗号及两侧字段）。
+旧格式仍返回 `UDCAP_PROBE_HAND_V1 = 1`。
+
+测试工具会将这两类探测结果交给 `UdCapV1Core`。
+Core 的手套序列号仍通过 `CMD_LINK_STATE` 或 `CMD_SERIAL` 获取。
+
 ## Response curves and bone offsets
 
 `getHandResponse()` / `setHandResponse(settings)` expose 21 per-hand response

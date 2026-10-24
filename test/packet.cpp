@@ -4,6 +4,7 @@
 #include <CorePref.h>
 #include <filesystem>
 #include <iostream>
+#include <string>
 #include <vector>
 
 static std::vector<uint8_t> makePacket(const std::vector<uint8_t> &payload) {
@@ -72,6 +73,67 @@ int main() {
     const auto recoveredName = nameParser.processPacket({'U', 'U', 'D', 'X', 'S', 'T', '4', '0', '0', '0', '4', '9', 'R', '\r'});
     if (recoveredName.size() != 1 || recoveredName.front().back() != 'R') {
         std::cerr << "Receiver name parser did not resynchronize\n";
+        return 1;
+    }
+
+    const std::vector<std::string> combinedNames{
+        "UDXST1L,AHST000019D",
+        "UDXST1R,AHST000019D",
+        "UDXST1L,AH" + std::string(30, '9')
+    };
+    for (const auto &name : combinedNames) {
+        if (!isUdCapCombinedV1ReceiverSerial(name) || isUdCapReceiverSerial(name)) {
+            std::cerr << "Combined receiver name was not distinguished from a legacy name\n";
+            return 1;
+        }
+        const std::vector<uint8_t> expected(name.begin(), name.end());
+        const std::string response = "AT+NAME?\r\n+NAME:" + name + "\r\nOK\r\n";
+        const std::vector<uint8_t> bytes(response.begin(), response.end());
+        // Include splits before/after the comma and inside the device serial.
+        for (std::size_t split = 0; split <= bytes.size(); ++split) {
+            UdCapProbePacketRealignmentHelper parser;
+            auto actual = parser.processPacket(std::vector<uint8_t>(bytes.begin(), bytes.begin() + split));
+            const auto tail = parser.processPacket(std::vector<uint8_t>(bytes.begin() + split, bytes.end()));
+            actual.insert(actual.end(), tail.begin(), tail.end());
+            if (actual.size() != 1 || actual.front() != expected) {
+                std::cerr << "Fragmented combined receiver name was not preserved\n";
+                return 1;
+            }
+        }
+        UdCapProbePacketRealignmentHelper byteParser;
+        std::vector<std::vector<uint8_t>> actual;
+        for (const auto byte : bytes) {
+            const auto packets = byteParser.processPacket({byte});
+            actual.insert(actual.end(), packets.begin(), packets.end());
+        }
+        if (actual.size() != 1 || actual.front() != expected) {
+            std::cerr << "Byte-by-byte combined receiver name was not recovered\n";
+            return 1;
+        }
+    }
+    const std::vector<std::string> invalidCombinedNames{
+        "UDXST1X,AHST000019D", "UDXST2L,AHST000019D", "UDXST1L,",
+        "UDXST1L,AHST", "UDXST1L,ACST000019D", "UDXST1L,AHST000019d",
+        "UDXST1L,AHST000019D,EXTRA", "UDXST1L,AHST 000019D",
+        "UDXST1R,AH" + std::string(31, '9'), "UDX" + std::string(29, '0') + "L"
+    };
+    for (const auto &name : invalidCombinedNames) {
+        UdCapProbePacketRealignmentHelper parser;
+        const std::string response = name + "\r\n";
+        if (isUdCapCombinedV1ReceiverSerial(name) ||
+            !parser.processPacket(std::vector<uint8_t>(response.begin(), response.end())).empty()) {
+            std::cerr << "Malformed combined or oversized legacy receiver name was accepted\n";
+            return 1;
+        }
+        const std::string legacy = "UDXST400049L\r\n";
+        const auto recovered = parser.processPacket(std::vector<uint8_t>(legacy.begin(), legacy.end()));
+        if (recovered.size() != 1 || recovered.front() != expectedName) {
+            std::cerr << "Receiver name parser did not recover after a malformed combined name\n";
+            return 1;
+        }
+    }
+    if (isUdCapCombinedV1ReceiverSerial("UDXST400049L")) {
+        std::cerr << "Legacy receiver name was classified as combined\n";
         return 1;
     }
     return 0;

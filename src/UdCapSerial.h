@@ -16,6 +16,16 @@ inline bool isUdCapReceiverSerial(std::string_view serial) {
     return isUdCapSerialText(serial) && serial.substr(0, 3) == "UDX";
 }
 
+inline bool isUdCapCombinedV1ReceiverSerial(std::string_view serial) {
+    if (serial.substr(0, 8) != "UDXST1L," && serial.substr(0, 8) != "UDXST1R,") return false;
+    const auto deviceSerial = serial.substr(8);
+    if (deviceSerial.size() < 6 || deviceSerial.size() > 32 || deviceSerial.substr(0, 2) != "AH") return false;
+    // The combined device serial does not carry the L/R suffix; the name does.
+    return std::all_of(deviceSerial.begin(), deviceSerial.end(), [](char c) {
+        return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+    });
+}
+
 inline bool isUdCapGloveSerial(std::string_view serial) {
     return isUdCapSerialText(serial) &&
            (serial.substr(0, 2) == "AB" || serial.substr(0, 2) == "AC" ||
