@@ -129,7 +129,7 @@ level and the raw measurement through `UdCapV1MCUPacket` and `getBattery()`.
 ## Combined V1 接收器探测
 
 `UdCapProbe::probe()` 支持 `AT+NAME?` 返回 `UDXST1L,AHST000019D`
-或 `UDXST1R,AHST000019D`，成功时返回 `UDP_PROBE_HAND_V1_COMBINED_V1 = 2`。
+或 `UDXST1R,AHST000019D`，成功时返回 `UDCAP_PROBE_HAND_V1_COMBINED_V1 = 2`。
 逗号前必须是 `UDXST1L` 或 `UDXST1R`；逗号后是以 `AH` 开头的
 6～32 位大写字母、数字序列号，不要求以 `L` 或 `R` 结尾。
 与旧格式一样，响应以 CR 或 LF 结束，探测需要两次一致的有效响应。

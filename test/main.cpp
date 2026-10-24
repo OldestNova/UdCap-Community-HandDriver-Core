@@ -66,7 +66,7 @@ int main() {
                     std::cout << "  Probe failed." << std::endl;
                     break;
                 }
-                case UDP_PROBE_HAND_V1_COMBINED_V1:
+                case UDCAP_PROBE_HAND_V1_COMBINED_V1:
                 case UDCAP_PROBE_HAND_V1: {
                     std::cout << "  Probe successful. This is a UdCap Receiver with SN: " << prober.getUDCapSerial() <<
                             std::endl;

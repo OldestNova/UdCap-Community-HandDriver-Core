@@ -127,7 +127,7 @@ UdCapProbeType UdCapProbe::probe() {
             return UDCAP_PROBE_FAILURE;
         }
         return isUdCapCombinedV1ReceiverSerial(this->udCapSerial)
-                   ? UDP_PROBE_HAND_V1_COMBINED_V1 : UDCAP_PROBE_HAND_V1;
+                   ? UDCAP_PROBE_HAND_V1_COMBINED_V1 : UDCAP_PROBE_HAND_V1;
     } catch (const std::exception &) {
         try { cleanup(); } catch (const std::exception &) {}
         this->udCapSerial.clear();
