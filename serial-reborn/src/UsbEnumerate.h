@@ -57,6 +57,8 @@ public:
     void callHotPlugCallback(UsbHotPlugEventType);
     std::function<void()> listenHotPlug(const std::function<void(UsbHotPlugEventType)> &callback);
     static std::shared_ptr<UsbEnumerate> getInstance();
+    // Fast scans stop at the first port per device, except 1A86:7524 receivers:
+    // both MI00 and MI02 are always enumerated for Combined V1.
     void refresh(UsbEnumerateRefreshType type,
                  const std::function<bool(uint16_t, uint16_t)> &serialDeviceFilter = {},
                  bool firstSerialPortOnly = false);

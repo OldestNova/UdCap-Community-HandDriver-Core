@@ -8,6 +8,7 @@
 #include <libusb.h>
 #include <libusbp.hpp>
 #include "UsbEnumerate.h"
+#include "SerialPortEnumeration.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -229,77 +230,16 @@ void UsbEnumerate::refresh(UsbEnumerateRefreshType type,
                         serialNumber = "";
                     }
 
-                    if (firstSerialPortOnly) {
-                        // A receiver exposes one COM port. Try the usual non-composite
-                        // interface first so CH340-style devices avoid 255 failed probes.
-                        try {
-                            libusbp::serial_port port(device, 0, false);
-                            SerialDevice serialDevice{};
-                            serialDevice.isHid = false;
-                            serialDevice.vid = vendorId;
-                            serialDevice.pid = productId;
-                            serialDevice.serialNumber = serialNumber;
-                            serialDevice.interfaceNumber = 0;
-                            serialDevice.composite = false;
-                            serialDevice.portName = port.get_name();
-                            this->devices.push_back(std::move(serialDevice));
-                            continue;
-                        } catch (const libusbp::error &) {
-                        }
-                        for (uint32_t i = 0; i < 255; ++i) {
+                    auto serialPorts = serial_reborn::detail::enumerateSerialPortsForDevice(
+                        vendorId, productId, serialNumber, firstSerialPortOnly,
+                        [&](uint8_t interfaceNumber, bool composite) -> std::optional<std::string> {
                             try {
-                                libusbp::serial_port port(device, i, true);
-                                SerialDevice serialDevice{};
-                                serialDevice.isHid = false;
-                                serialDevice.vid = vendorId;
-                                serialDevice.pid = productId;
-                                serialDevice.serialNumber = serialNumber;
-                                serialDevice.interfaceNumber = i;
-                                serialDevice.composite = true;
-                                serialDevice.portName = port.get_name();
-                                this->devices.push_back(std::move(serialDevice));
-                                break;
+                                return libusbp::serial_port(device, interfaceNumber, composite).get_name();
                             } catch (const libusbp::error &) {
+                                return std::nullopt;
                             }
-                        }
-                        continue;
-                    }
-
-                    bool success = false;
-                    for (uint32_t i = 0; i < 255; i++) {
-                        try {
-                            libusbp::serial_port port(device, i, true);
-                            std::string port_name = port.get_name();
-                            SerialDevice compSerialDevice {};
-                            compSerialDevice.isHid = false;
-                            compSerialDevice.vid = vendorId;
-                            compSerialDevice.pid = productId;
-                            compSerialDevice.serialNumber = serialNumber;
-                            compSerialDevice.interfaceNumber = i;
-                            compSerialDevice.composite = true;
-                            compSerialDevice.portName = port_name;
-                            success = true;
-                            this->devices.push_back(compSerialDevice);
-                        } catch (const libusbp::error &error) {
-
-                        }
-                    }
-                    if (!success) {
-                        try {
-                            libusbp::serial_port port(device, 0, false);
-                            SerialDevice serialDevice {};
-                            serialDevice.isHid = false;
-                            serialDevice.vid = vendorId;
-                            serialDevice.pid = productId;
-                            serialDevice.serialNumber = serialNumber;
-                            serialDevice.interfaceNumber = 0;
-                            serialDevice.composite = false;
-                            std::string port_name = port.get_name();
-                            serialDevice.portName = port_name;
-                            this->devices.push_back(serialDevice);
-                        } catch (const libusbp::error &error) {
-                        }
-                    }
+                        });
+                    for (auto &port : serialPorts) this->devices.push_back(std::move(port));
                 } catch (const libusbp::error &error) {
                 }
             }

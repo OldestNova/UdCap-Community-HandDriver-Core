@@ -139,6 +139,16 @@ level and the raw measurement through `UdCapV1MCUPacket` and `getBattery()`.
 测试工具会将这两类探测结果交给 `UdCapV1Core`。
 Core 的手套序列号仍通过 `CMD_LINK_STATE` 或 `CMD_SERIAL` 获取。
 
+Combined V1 使用 `1A86:7524`，同一 USB 设备的 `MI00` 和 `MI02` 各提供一个串口。
+`UsbEnumerate::refresh()` 在完整枚举和 `firstSerialPortOnly=true` 的快速枚举中
+都会保留这两个接口，并分别设置 `interfaceNumber` 为 `0`、`2`，`composite=true`。
+两个接口可共享 USB 序列号；宿主应按 `portName` 区分端口，分别创建 `PortAccessor`
+并执行 Probe，避免按 VID/PID 或共享序列号合并。宿主的 VID/PID 筛选须同时接受
+`1A86:7523` 和 `1A86:7524`。
+
+`UdCapCommunityDriverCoreTest --list-ports` 仅列出候选接收器的 COM 端口和接口号，
+不会打开串口或发送探测、标定命令，便于与设备管理器核对。
+
 ## Response curves and bone offsets
 
 `getHandResponse()` / `setHandResponse(settings)` expose 21 per-hand response

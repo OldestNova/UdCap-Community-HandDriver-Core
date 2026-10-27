@@ -6,6 +6,7 @@
 #include <iostream>
 #include <functional>
 #include <vector>
+#include <string>
 #include <UsbEnumerate.h>
 #include <PortAccessor.h>
 #include <UdCapProbe.h>
@@ -41,7 +42,12 @@ void signal_handler(int signal)
 }
 #endif
 
-int main() {
+int main(int argc, char *argv[]) {
+    const bool listPortsOnly = argc == 2 && std::string(argv[1]) == "--list-ports";
+    if (argc > 1 && !listPortsOnly) {
+        std::cerr << "Usage: " << argv[0] << " [--list-ports]\n";
+        return 1;
+    }
 #if WIN32
     SetConsoleCtrlHandler(CtrlHandler, TRUE);
 #else
@@ -49,10 +55,14 @@ int main() {
     std::signal(SIGTERM, signal_handler);
 #endif
     try {
-        UsbEnumerate::getInstance()->refresh(USB_ENUMERATE_REFRESH_SERIAL);
+        auto isReceiver = [](uint16_t vid, uint16_t pid) {
+            return vid == 0x1A86 && (pid == 0x7523 || pid == 0x7524);
+        };
+        UsbEnumerate::getInstance()->refresh(USB_ENUMERATE_REFRESH_SERIAL, isReceiver, true);
         UsbEnumerate::getInstance()->printDevices();
-        std::vector<SerialDevice> devices = UsbEnumerate::getInstance()->findPorts([](const SerialDevice &device) {
-            return device.vid == 0x1A86 && device.pid == 0x7523;
+        if (listPortsOnly) return 0;
+        std::vector<SerialDevice> devices = UsbEnumerate::getInstance()->findPorts([&](const SerialDevice &device) {
+            return !device.isHid && isReceiver(device.vid, device.pid);
         });
         for (const auto &device: devices) {
             std::cout << "Found device: " << device.portName << std::endl;
@@ -71,12 +81,15 @@ int main() {
                     std::cout << "  Probe successful. This is a UdCap Receiver with SN: " << prober.getUDCapSerial() <<
                             std::endl;
                     std::shared_ptr<UdCapV1Core> core = std::make_shared<UdCapV1Core>(portAccessor);
-                    auto unlisten = core->listen([&core](std::shared_ptr<UdCapV1MCUPacket> data) {
+                    const std::weak_ptr<UdCapV1Core> weakCore = core;
+                    auto unlisten = core->listen([weakCore](std::shared_ptr<UdCapV1MCUPacket> data) {
+                        const auto core = weakCore.lock();
+                        if (!core) return;
                         if (data->commandType == CMD_LINK_STATE) {
                             std::cout << "  Link State: " << UdCapV1Core::fromUdStateToString(data->udState) <<
                                     std::endl;
                             if (data->udState == UdState::UD_INIT_STATE_LINKED) {
-                                std::thread t([&core]() {
+                                std::thread t([core]() {
                                     try {
                                         std::cout << "Start calibration. " << std::endl;
                                         std::this_thread::sleep_for(std::chrono::seconds(1));
